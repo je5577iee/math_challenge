@@ -329,6 +329,7 @@ h1{
 .p-go{background:var(--orange); color:#fff}
 .p-go.danger{background:var(--red)}
 .p-cancel{background:var(--soft)}
+.p-lab{font-weight:800; font-size:15px; width:100%}
 .p-ask{flex:1; font-weight:800; font-size:15px; min-width:150px}
 
 /* ---------- 分組搶答：設定 ---------- */
@@ -406,7 +407,6 @@ body.wide-on #app{max-width:none; padding:10px 14px; height:100vh; height:100dvh
 .zp{position:relative; display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
   font-size:max(.32em, 8px); line-height:1.05; letter-spacing:0; margin:0 .6em 0 .12em; font-weight:700}
 .zp i{display:block; font-style:normal}
-.zp i.yi{transform:rotate(90deg)}                 /* 直式的「ㄧ」是直的 */
 .zp .tn{position:absolute; left:100%; bottom:.15em; margin-left:.05em}
 .zp .lt{position:absolute; top:-.9em; left:0; right:0; text-align:center}
 body.zy-on .h-say{line-height:2.1}
@@ -497,36 +497,37 @@ body.zy-on .rank-row{line-height:1.9}
         <span class="rnext" id="meNext"></span>
       </div>
       <div class="p-actions" id="pActions">
-        <button class="pill soft" id="pAddBtn">＋ 新增玩家</button>
-        <button class="pill soft" id="pDelBtn">刪除這位玩家</button>
+        <button class="pill soft" id="pAddBtn">＋ <span data-zy="">新增玩家</span></button>
+        <button class="pill soft" id="pDelBtn" data-zy="">刪除這位玩家</button>
       </div>
       <div class="p-row" id="pAddRow" hidden>
-        <input id="pInput" maxlength="8" placeholder="輸入座號或綽號">
-        <button class="p-go" id="pAdd">新增</button>
-        <button class="p-cancel" id="pAddCancel">取消</button>
+        <span class="p-lab" data-zy="">輸入座號或綽號：</span>
+        <input id="pInput" maxlength="8" aria-label="輸入座號或綽號">
+        <button class="p-go" id="pAdd" data-zy="">新增</button>
+        <button class="p-cancel" id="pAddCancel" data-zy="">取消</button>
       </div>
       <div class="p-row" id="pDelRow" hidden>
         <span class="p-ask" id="pDelAsk"></span>
-        <button class="p-go danger" id="pDelYes">刪除</button>
-        <button class="p-cancel" id="pDelNo">取消</button>
+        <button class="p-go danger" id="pDelYes" data-zy="">刪除</button>
+        <button class="p-cancel" id="pDelNo" data-zy="">取消</button>
       </div>
     </div>
 
     <!-- 分組賽：隊伍設定 -->
     <div class="card" id="teamCard">
       <div class="tnames">
-        <div class="tn" style="--tc:#ff5a4f"><span class="kcap">A</span><input id="tn0" maxlength="6" placeholder="輸入隊名" aria-label="左邊隊名"><small>按 A 搶答</small></div>
+        <div class="tn" style="--tc:#ff5a4f"><span class="kcap">A</span><small data-zy="">輸入隊名</small><input id="tn0" maxlength="6" aria-label="左邊隊名"><small data-zy="">按 A 搶答</small></div>
         <div class="vsmall">VS</div>
-        <div class="tn" style="--tc:#3b7be0"><span class="kcap">L</span><input id="tn1" maxlength="6" placeholder="輸入隊名" aria-label="右邊隊名"><small>按 L 搶答</small></div>
+        <div class="tn" style="--tc:#3b7be0"><span class="kcap">L</span><small data-zy="">輸入隊名</small><input id="tn1" maxlength="6" aria-label="右邊隊名"><small data-zy="">按 L 搶答</small></div>
       </div>
-      <div class="trow"><span>每隊幾個人？</span>
+      <div class="trow"><span data-zy="">每隊幾個人？</span>
         <div class="sizesel">
           <select id="sizeSel" aria-label="每隊人數"><option value="3">3 人</option><option value="4">4 人</option><option value="5">5 人</option><option value="custom">自行填寫</option></select>
           <input id="sizeCustom" type="number" min="1" max="30" inputmode="numeric" aria-label="自行填寫人數" hidden>
         </div>
       </div>
       <div class="twarn" id="tWarn"></div>
-      <p class="tip">兩隊各派一人站在鍵盤兩邊，一隊按 A 搶答，一隊按 L 搶答，贏的人再從四個選項選答案，一人一題輪流上台，每人輪兩次就結束。</p>
+      <p class="tip" data-zy="">兩隊各派一人站在鍵盤兩邊，一隊按 A 搶答，一隊按 L 搶答，贏的人再從四個選項選答案，一人一題輪流上台，每人輪兩次就結束。</p>
     </div>
 
     <div class="label" data-zy="">選擇題型</div>
@@ -858,7 +859,7 @@ function rubyOf(c, z){
   if(z.charAt(0) === '˙'){ light = true; z = z.slice(1); }
   if('ˊˇˋ'.indexOf(z.charAt(z.length-1)) >= 0){ tone = z.charAt(z.length-1); z = z.slice(0,-1); }
   let col = '';
-  for(let k=0;k<z.length;k++){ const ch = z.charAt(k); col += '<i'+(ch==='ㄧ' ? ' class="yi"' : '')+'>'+ch+'</i>'; }
+  for(let k=0;k<z.length;k++){ const ch = z.charAt(k); col += '<i>'+ch+'</i>'; }
   return '<span class="zc">'+c+'<span class="zp">'+(light ? '<i class="lt">˙</i>' : '')+col
        + (tone ? '<i class="tn">'+tone+'</i>' : '')+'</span></span>';
 }
@@ -964,7 +965,7 @@ $('pInput').addEventListener('keydown', function(e){ if(e.key==='Enter') addPlay
 $('pDelBtn').onclick = function(){
   const p = me();
   closePRows();
-  $('pDelAsk').textContent = '確定刪除「' + p.name + '」和他的 ' + p.stars + ' 顆星星嗎？';
+  $('pDelAsk').innerHTML = Z('確定刪除「' + nz(p.name) + '」和他的 ' + p.stars + ' 顆星星嗎？');
   $('pActions').hidden = true; $('pDelRow').hidden = false;
 };
 $('pDelNo').onclick = closePRows;
@@ -1004,7 +1005,7 @@ function chooseOp(op){
   if(mode==='team'){
     const miss = [0,1].filter(function(i){ return !(store.teamNames[i]||'').trim(); });
     if(miss.length){
-      $('tWarn').textContent = '請先幫兩隊取好隊名，才能開始比賽喔！';
+      $('tWarn').innerHTML = Z('請先幫兩隊取好隊名，才能開始比賽喔！');
       miss.forEach(function(i){ const el = $('tn'+i); el.classList.remove('need'); void el.offsetWidth; el.classList.add('need'); });
       $('teamCard').scrollIntoView({ behavior:'smooth', block:'center' });
       $('tn'+miss[0]).focus();
