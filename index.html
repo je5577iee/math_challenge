@@ -1,0 +1,1584 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>加減乘除大挑戰</title>
+<!--
+  加減乘除大挑戰
+  - 單一 HTML 檔，完全離線可用，不引用任何外部資源
+  - 吉祥物「小加、小減、小乘、小除」與所有圖示皆為原創 SVG 向量圖，直接寫在本檔案中
+  - 玩家暱稱與星星只存在本機瀏覽器（localStorage），不會上傳、不需登入
+  - 個人賽：每位玩家各自累積星星、升級稱號
+  - 分組賽：投影到大螢幕，2～4 隊輪流作答
+-->
+<style>
+:root{
+  --bg1:#fff3d9; --bg2:#ffe6ef; --card:#ffffff;
+  --ink:#3b2f4a; --muted:#8b7f99; --line:#f1e4d4;
+  --orange:#ff7a2f; --green:#34c06f; --green-d:#23934f;
+  --blue:#4c8dff; --blue-d:#2f62d0; --red:#ff6262; --red-d:#d63d48;
+  --gold:#ffc531; --star-off:#e8dfd3; --soft:#f6f0e8; --soft-d:#eadfce;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{
+  color:var(--ink);
+  font-family:"Arial Rounded MT Bold",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif;
+  background:
+    radial-gradient(rgba(255,170,90,.22) 1.6px, transparent 1.7px) 0 0/24px 24px,
+    linear-gradient(170deg,var(--bg1),var(--bg2));
+  background-attachment:fixed;
+  display:flex; justify-content:center; user-select:none; -webkit-user-select:none;
+  overflow-x:hidden;
+}
+input{user-select:text; -webkit-user-select:text}
+button{font:inherit; cursor:pointer; touch-action:manipulation; color:inherit}
+.ico{width:1em; height:1em; vertical-align:-.14em; flex-shrink:0}
+
+.deco{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden}
+.deco span{position:absolute; font-weight:900; opacity:.12; animation:float 7s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-14px) rotate(6deg)}}
+
+#app{position:relative; z-index:1; width:100%; max-width:560px; padding:16px 16px 24px; min-height:100vh; display:flex; flex-direction:column}
+.screen{display:none; flex:1; flex-direction:column}
+.screen.active{display:flex; animation:fadein .3s ease}
+@keyframes fadein{from{opacity:0; transform:translateY(8px)}to{opacity:1; transform:none}}
+
+/* ---------- 吉祥物 ---------- */
+.mascot svg,.mini svg{width:100%; height:100%; display:block; overflow:visible}
+.m-happy,.eyes-happy{display:none}
+.happy .m-happy,.happy .eyes-happy{display:inline}
+.happy .m-normal,.happy .eyes-open{display:none}
+/* 答錯時的鼓勵表情：瞇瞇笑眼＋微笑，不會出現傷心的臉 */
+.cheer .eyes-happy{display:inline}
+.cheer .eyes-open{display:none}
+.mgroup{display:grid; grid-template-columns:1fr 1fr; width:100%; height:100%; gap:2px}
+.bob{animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.jump{animation:jump .45s ease}
+@keyframes jump{0%,100%{transform:translateY(0)}40%{transform:translateY(-16px) scale(1.06)}}
+
+/* ---------- 共用 ---------- */
+.pill{
+  display:inline-flex; align-items:center; gap:6px;
+  border:none; background:#fff; border-radius:999px; padding:9px 16px;
+  font-size:16px; font-weight:800; box-shadow:0 4px 0 var(--line);
+}
+.pill:active{transform:translateY(3px); box-shadow:0 1px 0 var(--line)}
+.pill.soft{background:var(--soft); box-shadow:0 3px 0 var(--soft-d)}
+.foot{margin-top:auto; text-align:center; padding-top:18px}
+.card{background:#fff; border-radius:22px; box-shadow:0 6px 0 var(--line); padding:12px 14px; margin-bottom:16px}
+.label{font-size:17px; font-weight:900; color:var(--muted); margin:2px 4px 10px}
+.icon-circle{
+  width:64px; height:64px; border-radius:50%; background:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:36px; flex-shrink:0;
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.08);
+}
+
+/* ---------- 首頁 ---------- */
+.crew{display:flex; justify-content:center; gap:2px; margin-top:6px}
+.crew .mascot{width:80px; height:80px}
+.crew .who{text-align:center; font-size:15px; font-weight:900; margin-top:-2px}
+h1{
+  font-size:clamp(30px,8.5vw,44px); text-align:center; margin:6px 0 14px; letter-spacing:3px;
+  color:var(--orange); text-shadow:0 4px 0 #ffd2a8;
+}
+
+.tabs{display:flex; background:#fff; border-radius:999px; padding:5px; box-shadow:0 5px 0 var(--line); margin-bottom:16px}
+.tab{flex:1; border:none; background:none; border-radius:999px; padding:11px 0; font-size:19px; font-weight:900; color:var(--muted);
+  display:flex; align-items:center; justify-content:center; gap:6px}
+.tab.active{background:var(--orange); color:#fff}
+
+.me-top{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.me-top .pill b{max-width:7.5em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.me-stars{display:flex; align-items:center; gap:6px; font-size:28px; font-weight:900; color:var(--orange)}
+.me-stars .ico{color:var(--gold)}
+.rank-row{display:flex; align-items:center; gap:10px; margin-top:10px; font-weight:800; font-size:15px}
+.rank-title{background:#fff4d1; color:#b07a00; border-radius:999px; padding:4px 10px; white-space:nowrap}
+.rbar{flex:1; height:12px; background:#f3ece2; border-radius:999px; overflow:hidden}
+.rbar div{height:100%; width:0; background:linear-gradient(90deg,#ffd45c,#ffb52e); border-radius:999px; transition:width .4s}
+.rnext{color:var(--muted); font-size:13px; white-space:nowrap}
+
+.trow{display:flex; align-items:center; justify-content:space-between; margin:6px 0; font-weight:900; font-size:17px}
+.seg{display:flex; gap:8px}
+.seg button{border:none; min-width:48px; padding:0 8px; height:44px; border-radius:14px; background:var(--soft); font-size:20px; font-weight:900; box-shadow:0 3px 0 var(--soft-d)}
+.seg button.on{background:var(--blue); color:#fff; box-shadow:0 3px 0 var(--blue-d)}
+.tpreview{display:flex; justify-content:center; gap:12px; margin-top:10px}
+.tp{display:flex; flex-direction:column; align-items:center; font-size:14px; font-weight:900}
+.tp .mini{width:66px; height:66px}
+.tp input{width:118px; margin-top:4px; text-align:center; font:inherit; font-size:18px; font-weight:900; color:var(--tc);
+  border:3px solid var(--line); border-radius:12px; padding:6px 4px; outline:none; background:#fffdf8}
+.tp input:focus{border-color:var(--tc)}
+.tp small{color:var(--muted); font-size:13px; margin-top:4px}
+.vsmall{align-self:center; font-size:28px; font-weight:900; color:var(--orange); margin:0 6px}
+.tip{font-size:14px; color:var(--muted); text-align:center; margin:8px 0 2px; font-weight:700}
+
+.op-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+.op-btn{
+  border:none; border-radius:24px; padding:14px 10px 12px; color:#fff;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  background:var(--c); box-shadow:0 7px 0 var(--d); transition:transform .08s;
+}
+.op-btn:active{transform:translateY(5px); box-shadow:0 2px 0 var(--d)}
+.op-btn .icon-circle{width:60px; height:60px; font-size:34px; color:var(--c)}
+.op-btn .name{font-size:25px; font-weight:900; letter-spacing:4px}
+.op-btn .eg{font-size:15px; font-weight:700; opacity:.95}
+.op-btn.mix{grid-column:1/-1; flex-direction:row; justify-content:center; gap:16px;
+  background:linear-gradient(90deg,#ff7a2f,#14a3b3,#8a5cf0,#e5468e)}
+.op-btn.mix .txt{text-align:left}
+
+/* ---------- 選難度 ---------- */
+.lv-head{display:flex; align-items:center; gap:14px; margin:20px 0 20px}
+.lv-head .icon-circle{width:76px; height:76px; font-size:44px; box-shadow:0 5px 0 var(--line)}
+.lv-title{font-size:34px; font-weight:900; letter-spacing:4px}
+.lv-sub{font-size:16px; color:var(--muted); font-weight:800}
+
+.level-btn{
+  position:relative; display:flex; align-items:center; gap:16px; width:100%;
+  border:none; border-radius:24px; padding:16px 18px; margin-bottom:18px;
+  color:#fff; text-align:left; transition:transform .08s, box-shadow .08s;
+}
+.level-btn:active{transform:translateY(5px)}
+.level-btn .icon-circle{font-size:38px}
+.level-btn .txt{flex:1}
+.level-btn .name{font-size:28px; font-weight:900; letter-spacing:2px}
+.level-btn .desc{font-size:15px; font-weight:700; opacity:.95; margin-top:2px}
+.level-btn .best{font-size:14px; font-weight:700; margin-top:6px; display:flex; align-items:center; gap:4px}
+.level-btn .best:empty{display:none}
+.level-btn .go{font-size:26px; opacity:.85}
+.easy{background:linear-gradient(135deg,#4fd487,var(--green)); box-shadow:0 7px 0 var(--green-d)}
+.easy .icon-circle{color:var(--green)}
+.mid{background:linear-gradient(135deg,#6fa6ff,var(--blue)); box-shadow:0 7px 0 var(--blue-d)}
+.mid .icon-circle{color:var(--blue)}
+.hard{background:linear-gradient(135deg,#ff8a7a,var(--red)); box-shadow:0 7px 0 var(--red-d)}
+.hard .icon-circle{color:var(--red)}
+.level-btn:active{box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.mini-stars .ico{font-size:15px}
+.mini-stars .on{color:var(--gold)} .mini-stars .off{color:rgba(255,255,255,.45)}
+
+/* ---------- 遊戲畫面 ---------- */
+.topbar{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.tag{font-weight:900; font-size:17px; padding:7px 14px; border-radius:999px; color:#fff; letter-spacing:1px; white-space:nowrap}
+.score-pill{color:var(--orange)}
+.score-pill .ico{color:var(--gold)}
+.board{display:flex; gap:8px; margin-top:14px}
+.tchip{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+  background:#fff; border-radius:16px; padding:6px 4px 6px; border:3px solid transparent;
+  box-shadow:0 4px 0 var(--line); font-weight:900; transition:transform .2s;
+}
+.tchip .mini{width:38px; height:38px}
+.tchip .tname{font-size:14px}
+.tchip .ts{font-size:20px; color:#b07a00; display:flex; align-items:center; gap:3px}
+.tchip .ts .ico{color:var(--gold)}
+.tchip.on{border-color:var(--tc); transform:translateY(-4px); background:#fffdf6}
+.progress{height:16px; background:#fff; border-radius:999px; margin:14px 0 8px; overflow:hidden; box-shadow:inset 0 2px 0 rgba(0,0,0,.06)}
+#bar,#bBar{height:100%; width:0; border-radius:999px; transition:width .25s;
+  background:repeating-linear-gradient(-45deg,#ffd45c 0 10px,#ffc531 10px 20px)}
+.status{display:flex; justify-content:center; align-items:center; gap:14px; color:var(--muted); font-size:18px; font-weight:800; min-height:26px; flex-wrap:wrap}
+.status .combo{color:var(--orange)}
+.status .turn{font-size:21px; font-weight:900}
+.status .warn{color:var(--red)}
+
+.qcard{
+  position:relative; background:var(--card); border-radius:28px;
+  box-shadow:0 7px 0 var(--line); padding:40px 10px 16px; margin:40px 0 18px;
+  text-align:center; transition:background .2s;
+}
+.qcard.good{background:#e6f9ee} .qcard.bad{background:#fff3e0}
+.qcard .mascot{position:absolute; width:76px; height:76px; top:-46px; left:50%; margin-left:-38px}
+.question{font-size:clamp(38px,11.5vw,64px); font-weight:900; white-space:nowrap; letter-spacing:1px}
+.question .n1{color:var(--orange)} .question .n2{color:var(--blue)} .question .op{color:#c8b9d6}
+.slot{
+  display:inline-block; min-width:1.45em; padding:0 .12em; border-radius:16px;
+  border:4px dashed #d6c8e2; color:#d6c8e2; line-height:1.12;
+}
+.slot.filled{border-style:solid; border-color:var(--blue); color:var(--blue); background:#eef4ff}
+.qcard.good .slot{border-color:var(--green); color:var(--green); background:#fff}
+.qcard.bad .slot{border-color:#f08c00; color:#e8710a; background:#fff}
+.feedback{font-size:24px; font-weight:900; min-height:34px; margin-top:8px}
+.feedback.good{color:var(--green)} .feedback.bad{color:#e8710a}
+.hint{margin-top:6px; font-size:17px; font-weight:700; color:var(--muted)}
+.hint .pill{background:#fff7e0; box-shadow:0 4px 0 #f5e2b0; color:#b07a00}
+.hint b{color:var(--ink)}
+.dots{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:8px 0}
+.grp{display:inline-flex; flex-wrap:wrap; justify-content:center; gap:3px; background:#fff3d6; border-radius:10px; padding:5px 7px; max-width:150px}
+.grp i{position:relative; width:11px; height:11px; border-radius:50%; background:var(--orange); display:block}
+.grp i.b{background:var(--blue)}
+.grp i.x{background:#d8cde3}
+.grp i.x::after{content:""; position:absolute; left:-3px; right:-3px; top:4.5px; height:2px; background:var(--red); transform:rotate(-45deg)}
+
+.choices{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+.choice{
+  border:none; border-radius:22px; font-size:42px; font-weight:900; padding:18px 0;
+  background:var(--c); color:var(--t); box-shadow:0 6px 0 var(--s); transition:transform .08s;
+}
+.choice:active{transform:translateY(5px); box-shadow:0 1px 0 var(--s)}
+.choice:nth-child(1){--c:#fff1c2; --s:#f0c949; --t:#8a5a00}
+.choice:nth-child(2){--c:#ffe0ec; --s:#f59ac0; --t:#a3285e}
+.choice:nth-child(3){--c:#d9f3ff; --s:#7cc4ea; --t:#1d6b94}
+.choice:nth-child(4){--c:#ece5ff; --s:#a995f0; --t:#5636b8}
+.choice.right{--c:var(--green); --s:var(--green-d); --t:#fff}
+.choice.wrong{--c:#ffa94d; --s:#e8710a; --t:#fff}
+.choice:disabled{opacity:.45; cursor:default}
+/* 提示的圖 */
+.h-say{font-size:17px; font-weight:800; color:var(--ink); line-height:1.5; margin:4px 0}
+.h-ans{font-size:22px; font-weight:900; color:var(--green-d); margin-top:4px}
+.tf{display:inline-grid; grid-template-columns:repeat(5,15px); gap:3px; padding:6px; background:#fff3d6; border-radius:10px}
+.tf i{position:relative; display:block; width:15px; height:15px; border-radius:50%; background:#fff; box-shadow:inset 0 0 0 2px #ecd9bb}
+.tf i.o{background:var(--orange); box-shadow:none}
+.tf i.b{background:var(--blue); box-shadow:none}
+.tf i.x{background:#d8cde3; box-shadow:none}
+.tf i.x::after{content:""; position:absolute; left:-3px; right:-3px; top:6.5px; height:2px; background:var(--red); transform:rotate(-45deg)}
+/* 糖果提示 */
+.h-tip{display:block; font-size:15px; color:var(--muted); font-weight:800; margin-top:2px}
+.cd{display:block; width:22px; height:15px}
+.pile{display:inline-grid; grid-template-columns:repeat(10,22px); gap:5px 3px; padding:10px 12px; background:#fff3d6; border-radius:12px}
+.kids{gap:6px}
+.kid{display:inline-flex; flex-direction:column; align-items:center; gap:5px; background:#fff; border:2px solid #f0d9b5; border-radius:14px; padding:6px 7px 8px; min-width:60px}
+.kd{display:block; width:32px; height:38px}
+.cand{display:grid; gap:3px 2px; justify-content:center}
+.cand .q{font-size:20px; line-height:16px; color:#c9bcae}
+
+.pad{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.key{
+  border:none; border-radius:20px; background:#fff; box-shadow:0 5px 0 #e6d8c6;
+  font-size:32px; font-weight:900; padding:12px 0; transition:transform .08s;
+  display:flex; align-items:center; justify-content:center; min-height:62px;
+}
+.key:active{transform:translateY(4px); box-shadow:0 1px 0 #e6d8c6}
+.key.ok{background:var(--green); color:#fff; box-shadow:0 5px 0 var(--green-d)}
+.key.del{background:#f3ebf9; color:#7d6a92; box-shadow:0 5px 0 #ddd0ea}
+
+.spark{position:fixed; z-index:50; pointer-events:none; font-size:22px; animation:fly .75s ease-out forwards}
+@keyframes fly{from{transform:translate(0,0) scale(.6) rotate(0); opacity:1}
+  to{transform:translate(var(--dx),var(--dy)) scale(1.1) rotate(160deg); opacity:0}}
+
+/* ---------- 結果畫面 ---------- */
+.result-box{
+  position:relative; background:#fff; border-radius:28px; box-shadow:0 7px 0 var(--line);
+  padding:66px 18px 22px; margin-top:70px; text-align:center;
+}
+.result-box .mascot{position:absolute; width:120px; height:120px; top:-66px; left:50%; margin-left:-60px}
+.stars{display:flex; justify-content:center; gap:8px; font-size:60px}
+.stars .ico{transform:scale(0); animation:popin .45s cubic-bezier(.3,1.6,.5,1) forwards}
+.stars .ico:nth-child(2){font-size:74px; margin-top:-12px; animation-delay:.2s}
+.stars .ico:nth-child(3){animation-delay:.4s}
+.stars .on{color:var(--gold); filter:drop-shadow(0 3px 0 #e0a400)}
+.stars .off{color:var(--star-off)}
+@keyframes popin{to{transform:scale(1)}}
+.r-title{font-size:32px; font-weight:900; margin:8px 0 6px; color:var(--orange)}
+.r-sub{font-size:16px; font-weight:800; color:var(--muted)}
+.r-line{font-size:20px; font-weight:800; margin:6px 0}
+.badge{display:inline-flex; align-items:center; gap:6px; background:#fff4d1; color:#b07a00;
+  font-weight:900; font-size:18px; padding:6px 14px; border-radius:999px; margin:6px 4px 0}
+.badge.up{background:#e6f9ee; color:var(--green-d)}
+.wrong-list{text-align:left; margin:18px 0 0; padding:14px 16px; background:#fff3f3; border-radius:18px}
+.wrong-list h3{margin:0 0 10px; font-size:18px; color:var(--red-d); display:flex; align-items:center; gap:6px}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{background:#fff; border-radius:12px; padding:6px 12px; font-size:20px; font-weight:800; box-shadow:0 3px 0 #f6d2d2; white-space:nowrap}
+.chip b{color:var(--red-d)}
+.all-right{margin-top:16px; font-size:20px; color:var(--green-d); font-weight:900; display:flex; justify-content:center; align-items:center; gap:8px}
+.rank-list{margin-top:16px; display:flex; flex-direction:column; gap:8px}
+.rrow{display:flex; align-items:center; gap:10px; background:#faf6f0; border-radius:16px; padding:8px 12px; font-size:21px; font-weight:900}
+.rrow.first{background:#fff4d1}
+.medal{width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:17px; flex-shrink:0}
+.rrow .mini{width:44px; height:44px; flex-shrink:0}
+.rrow .rn{flex:1; text-align:left}
+.rrow .rs{color:#b07a00; display:flex; align-items:center; gap:4px}
+.rrow .rs .ico{color:var(--gold)}
+.r-btns{display:flex; gap:12px; margin-top:22px}
+.r-btns button{
+  flex:1; border:none; border-radius:20px; padding:15px 0; font-size:21px; font-weight:900; color:#fff;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.r-btns button:active{transform:translateY(5px)}
+.again{background:var(--green); box-shadow:0 6px 0 var(--green-d)}
+.back{background:var(--blue); box-shadow:0 6px 0 var(--blue-d)}
+.to-home{margin-top:16px}
+
+/* ---------- 玩家清單 ---------- */
+.overlay{position:fixed; inset:0; z-index:100; background:rgba(40,30,60,.45); display:none; align-items:center; justify-content:center; padding:16px}
+.overlay.open{display:flex; animation:fadein .2s ease}
+.sheet{background:#fff; border-radius:24px; width:100%; max-width:440px; max-height:86vh; overflow:auto; padding:18px}
+.sheet h2{margin:0 0 4px; font-size:24px}
+.sheet .note{color:var(--muted); font-size:14px; font-weight:700; margin:0 0 12px}
+.prow{display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:16px; background:#faf6f0; margin-bottom:8px; border:3px solid transparent}
+.prow.on{border-color:var(--orange); background:#fff4ea}
+.prow .pname{flex:1; min-width:0; font-size:19px; font-weight:900; text-align:left; background:none; border:none; padding:4px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.prow .pst{font-weight:900; color:#b07a00; display:flex; align-items:center; gap:3px}
+.prow .pst .ico{color:var(--gold)}
+.prow .pdel{border:none; background:none; color:var(--muted); font-size:20px; padding:4px 6px}
+.addrow{display:flex; gap:8px; margin-top:12px}
+.addrow input{flex:1; min-width:0; font:inherit; font-size:18px; padding:10px 12px; border-radius:14px; border:3px solid var(--line); outline:none}
+.addrow input:focus{border-color:var(--orange)}
+.addrow button{border:none; border-radius:14px; background:var(--orange); color:#fff; font-weight:900; font-size:18px; padding:0 16px; white-space:nowrap}
+.sheet .close{width:100%; justify-content:center; margin-top:14px}
+
+/* ---------- 個人賽：玩家下拉選單 ---------- */
+[hidden]{display:none !important}
+.psel{display:flex; align-items:center; gap:4px; background:var(--soft); border-radius:999px; padding:2px 8px 2px 14px; box-shadow:0 3px 0 var(--soft-d); font-size:16px; min-width:0; cursor:pointer}
+.psel select{font:inherit; font-size:18px; font-weight:900; border:none; background:transparent; padding:8px 2px; max-width:11em; color:var(--ink); cursor:pointer}
+.p-actions{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap}
+.p-actions .pill{font-size:15px; padding:7px 13px}
+.p-row{display:flex; gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap}
+.p-row input{flex:1; min-width:120px; font:inherit; font-size:17px; padding:9px 12px; border-radius:14px; border:3px solid var(--line); outline:none}
+.p-row input:focus{border-color:var(--orange)}
+.p-go,.p-cancel{border:none; border-radius:14px; font-weight:900; font-size:16px; padding:10px 14px}
+.p-go{background:var(--orange); color:#fff}
+.p-go.danger{background:var(--red)}
+.p-cancel{background:var(--soft)}
+.p-ask{flex:1; font-weight:800; font-size:15px; min-width:150px}
+
+/* ---------- 分組搶答：設定 ---------- */
+.tnames{display:flex; align-items:flex-start; justify-content:center; gap:8px; margin:6px 0 10px}
+.tn{display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; max-width:170px}
+.kcap{width:52px; height:52px; border-radius:14px; background:var(--tc); color:#fff; font-size:30px; font-weight:900;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 5px 0 rgba(0,0,0,.18)}
+.tn input{width:100%; text-align:center; font:inherit; font-size:18px; font-weight:900; color:var(--tc);
+  border:3px solid var(--line); border-radius:12px; padding:8px 4px; outline:none; background:#fffdf8}
+.tn input::placeholder{color:#c9bcae; font-weight:700}
+.tn input:focus{border-color:var(--tc)}
+.tn input.need{border-color:var(--red); animation:shake .25s 2}
+.tn small{color:var(--muted); font-size:13px; font-weight:800}
+.sizesel{display:flex; gap:8px; align-items:center}
+.sizesel select,.sizesel input{font:inherit; font-size:17px; font-weight:900; padding:8px 10px; border-radius:12px; border:3px solid var(--line); background:#fffdf8; color:var(--ink)}
+.sizesel input{width:76px; text-align:center}
+.twarn{color:var(--red-d); font-weight:900; text-align:center; font-size:16px; margin-top:6px}
+.twarn:empty{display:none}
+
+/* ---------- 分組搶答：比賽畫面 ---------- */
+body.wide-on #app{max-width:none; padding:10px 14px; height:100vh; height:100dvh; min-height:0}
+#buzz{min-height:0}
+.d-top{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.d-prog{height:10px; margin:10px 0}
+.b-stage{flex:1; min-height:0; display:grid; grid-template-columns:1fr 2.2fr 1fr; gap:14px}
+.b-team{
+  position:relative; background:#fff; border-radius:26px; border:6px solid var(--tc); box-shadow:0 7px 0 var(--line);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.4vh; padding:12px;
+  text-align:center; transition:transform .15s, background .15s, opacity .2s; cursor:pointer; min-width:0;
+}
+.b-key{width:min(11vw,16vh); height:min(11vw,16vh); border-radius:22%; background:var(--tc); color:#fff;
+  font-size:min(7vw,10vh); font-weight:900; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 0 rgba(0,0,0,.18)}
+.b-name{font-size:min(3.4vw,5vh); font-weight:900; color:var(--tc); word-break:break-all; line-height:1.2}
+.b-score{font-size:min(5.5vw,9vh); font-weight:900; color:#b07a00; display:flex; align-items:center; gap:6px}
+.b-score .ico{color:var(--gold)}
+.b-who{font-size:min(1.9vw,2.9vh); font-weight:800; color:var(--muted)}
+.b-team.pulse .b-key{animation:keypulse 1s ease-in-out infinite}
+@keyframes keypulse{50%{transform:scale(1.1)}}
+.b-team.buzzed{background:var(--tc); transform:scale(1.05)}
+.b-team.buzzed .b-name,.b-team.buzzed .b-who,.b-team.buzzed .b-score,.b-team.buzzed .b-score .ico{color:#fff}
+.b-team.buzzed .b-key{background:#fff; color:var(--tc)}
+.b-team.out{opacity:.35}
+.b-center{background:#fff; border-radius:28px; box-shadow:0 7px 0 var(--line); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2.4vh; padding:16px; text-align:center; min-width:0}
+.b-status{font-size:min(3.4vw,5.4vh); font-weight:900; color:var(--muted); min-height:1.3em; line-height:1.3}
+.b-status.go{color:var(--orange); font-size:min(4.4vw,7vh)}
+.b-status.good{color:var(--green)} .b-status.bad{color:var(--red)}
+.b-q{font-size:min(8vw,14vh); font-weight:900; white-space:nowrap; line-height:1.15}
+.b-q .slot{border-width:min(.5vw,.8vh); border-radius:min(1.6vw,2.4vh)}
+.b-wait{color:#e2d6c8}
+.b-timer{font-size:min(2.8vw,4.4vh); font-weight:900; color:var(--muted); min-height:1.2em}
+.b-timer.warn{color:var(--red)}
+.b-next{font-size:min(2.4vw,3.8vh)}
+.b-choices{display:grid; grid-template-columns:1fr 1fr; gap:min(1.4vw,2vh); width:100%; max-width:min(52vw,84vh)}
+.b-choices .choice{position:relative; font-size:min(4.2vw,7vh); padding:min(1.1vw,1.7vh) 0; border-radius:18px}
+.b-choices.done .choice{pointer-events:none}
+.b-help{text-align:center; color:var(--muted); font-weight:700; font-size:14px; margin:10px 0 0}
+@media (max-aspect-ratio: 1/1){
+  .b-stage{grid-template-columns:1fr 1fr; grid-template-rows:auto 1fr}
+  #bt0{grid-column:1; grid-row:1} #bt1{grid-column:2; grid-row:1}
+  .b-center{grid-column:1 / 3; grid-row:2}
+  .b-key{width:15vw; height:15vw; font-size:9vw}
+  .b-name{font-size:5vw} .b-score{font-size:8vw} .b-who{font-size:3.4vw}
+  .b-status{font-size:5vw} .b-status.go{font-size:7vw}
+  .b-q{font-size:12vw} .b-timer{font-size:4.4vw}
+  .b-next{font-size:4.4vw}
+  .b-choices{max-width:none} .b-choices .choice{font-size:8vw; padding:2vw 0}}
+.tdot{width:18px; height:18px; border-radius:50%; flex-shrink:0}
+.trophy-big{width:100%; height:100%; color:var(--gold); filter:drop-shadow(0 5px 0 #e0a400)}
+.rn small{display:block; font-size:14px; color:var(--muted); font-weight:800}
+
+/* 注音 */
+/* 直式注音：注音直排在字的右邊，聲調在注音右側，輕聲在上方（跟國語課本一樣） */
+.zc{display:inline-flex; align-items:center; white-space:nowrap; text-indent:0}
+.zp{position:relative; display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:max(.32em, 8px); line-height:1.05; letter-spacing:0; margin:0 .6em 0 .12em; font-weight:700}
+.zp i{display:block; font-style:normal}
+.zp i.yi{transform:rotate(90deg)}                 /* 直式的「ㄧ」是直的 */
+.zp .tn{position:absolute; left:100%; bottom:.15em; margin-left:.05em}
+.zp .lt{position:absolute; top:-.9em; left:0; right:0; text-align:center}
+body.zy-on .h-say{line-height:2.1}
+body.zy-on h1{font-size:clamp(24px,6.6vw,40px); letter-spacing:0}
+body.zy-on .h-tip{font-size:17px; line-height:2}
+body.zy-on .r-sub{font-size:17px}
+body.zy-on .rnext{font-size:15px}
+body.zy-on .feedback{line-height:1.9}
+body.zy-on .level-btn .desc{font-size:16px; line-height:1.9}
+body.zy-on .r-sub, body.zy-on .r-line, body.zy-on .r-title{line-height:1.9}
+body.zy-on .b-status{line-height:1.8}
+body.zy-on .rank-row{line-height:1.9}
+.zy-ico{font-weight:900; color:var(--orange); font-size:1.1em}
+.foot .pill + .pill{margin-left:8px}
+
+.conf{position:fixed; top:-20px; z-index:60; pointer-events:none; border-radius:3px; animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-9px)}75%{transform:translateX(9px)}}
+.shake{animation:shake .25s 2}
+@keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.pop{animation:pop .3s}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none !important; transition:none !important}
+  .stars .ico{transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 原創 SVG 圖示庫（全部手繪向量，無外部圖片） ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-plus" viewBox="0 0 24 24"><g fill="currentColor"><rect x="10" y="3" width="4" height="18" rx="2"/><rect x="3" y="10" width="18" height="4" rx="2"/></g></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="4" rx="2" fill="currentColor"/></symbol>
+    <symbol id="i-times" viewBox="0 0 24 24"><g fill="currentColor" transform="rotate(45 12 12)"><rect x="10" y="3" width="4" height="18" rx="2"/><rect x="3" y="10" width="18" height="4" rx="2"/></g></symbol>
+    <symbol id="i-divide" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3" y="10" width="18" height="4" rx="2"/><circle cx="12" cy="5" r="2.5"/><circle cx="12" cy="19" r="2.5"/></g></symbol>
+    <symbol id="i-mix" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3.5c4.5 0 6.5 10 11 10H21"/><path d="M3 17h3.5c4.5 0 6.5-10 11-10H21"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/></g></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.2l2.95 6.1 6.7.85-4.95 4.6 1.3 6.65L12 17.1l-5.95 3.3 1.3-6.65L2.4 9.15l6.7-.85z"/></symbol>
+    <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 21.5v-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path fill="currentColor" d="M12 13.8C11.5 8.6 8 5.6 3 5.6c0 5 3.5 8.4 9 8.2z"/><path fill="currentColor" d="M12 11.6c.3-4.3 3.3-7.3 8.6-7.5-.2 4.6-3.4 7.4-8.6 7.5z"/></symbol>
+    <symbol id="i-rocket" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.8c3.2 2.1 5 6 5 10.2l-1.6 3.5H8.6L7 12c0-4.2 1.8-8.1 5-10.2zM7.2 11.5L4 14.6v3.6l4.3-2.2zM16.8 11.5L20 14.6v3.6l-4.3-2.2zM9.8 17h4.4L12 22z"/><circle cx="12" cy="9" r="2.1" fill="#fff"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path fill="currentColor" d="M12.5 1.8c.8 4.3 6.3 6.4 6.3 12.4A6.8 6.8 0 0 1 5.2 14.2c0-3.2 1.8-5.2 3.3-6.5.1 2.2 1 3.4 2.3 3.6-.4-3.1.1-6.4 1.7-9.5z"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21.2h4"/><path d="M12 2.8a6.2 6.2 0 0 0-3.7 11.2c.7.5 1.1 1.3 1.1 2.2h5.2c0-.9.4-1.7 1.1-2.2A6.2 6.2 0 0 0 12 2.8z"/></g></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path fill="currentColor" d="M3.5 9h4l5-4.2v14.4l-5-4.2h-4z"/><path d="M15.8 9a4.2 4.2 0 0 1 0 6M18.4 6.3a8 8 0 0 1 0 11.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path fill="currentColor" d="M3.5 9h4l5-4.2v14.4l-5-4.2h-4z"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M9.5 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5.2l3.3 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path fill="currentColor" d="M7 3.5h10v4.8a5 5 0 0 1-10 0zM11 14.5h2v3h-2zM7.5 18h9v3h-9z"/><path d="M7 5.5H4.2c0 2.6 1.4 4.3 3.4 4.6M17 5.5h2.8c0 2.6-1.4 4.3-3.4 4.6" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4.5 5.5A2.5 2.5 0 0 1 7 3h12.5v15H7a2.5 2.5 0 0 0-2.5 2.5z"/><path d="M4.5 20.5A2.5 2.5 0 0 0 7 21h12.5v-3"/></g></symbol>
+    <symbol id="i-del" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 5h11.5v14H9l-6.5-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></g></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 3.5v4.5H9"/></g></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="2"/><rect x="13" y="13" width="7.5" height="7.5" rx="2"/></g></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.2l9 7.6-1.4 1.6-1.1-.9V20a1 1 0 0 1-1 1h-3.8v-5.5h-3.4V21H6.5a1 1 0 0 1-1-1v-8.5l-1.1.9L3 10.8z"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="12" cy="8" r="4.5"/><path d="M3.5 21c.6-4.6 4-7.3 8.5-7.3s7.9 2.7 8.5 7.3z"/></g></symbol>
+    <symbol id="i-team" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8" cy="8" r="3.6"/><circle cx="16.5" cy="8.8" r="3.1"/><path d="M1.5 20c.4-3.9 3-6.2 6.5-6.2s6.1 2.3 6.5 6.2z"/><path d="M15.4 20c-.2-2.3-1-4.2-2.4-5.5.9-.5 2.1-.8 3.4-.8 3.1 0 5.3 2.1 6 6.3z"/></g></symbol>
+    <symbol id="i-candy" viewBox="0 0 28 18"><path fill="currentColor" opacity=".75" d="M1.5 3.5l7 5.5-7 5.5zM26.5 3.5l-7 5.5 7 5.5z"/><circle cx="14" cy="9" r="7" fill="currentColor"/><path d="M10.2 6.4q3.8-2.4 7.6 0" stroke="#fff" stroke-width="1.8" fill="none" opacity=".75" stroke-linecap="round"/></symbol>
+    <symbol id="i-kid" viewBox="0 0 24 28"><path d="M4 27.5q0-11.5 8-11.5t8 11.5z" fill="currentColor"/><circle cx="12" cy="9" r="6.2" fill="#ffd9b8"/><path d="M5.6 8.6q.4-6.8 6.4-6.8t6.4 6.8q-2.6-2.9-6.4-2.9t-6.4 2.9z" fill="currentColor"/><circle cx="9.7" cy="9.8" r="1" fill="#3b2f4a"/><circle cx="14.3" cy="9.8" r="1" fill="#3b2f4a"/><path d="M10.2 12.2q1.8 1.4 3.6 0" stroke="#3b2f4a" stroke-width="1" fill="none" stroke-linecap="round"/><circle cx="8" cy="12" r="1.1" fill="#ff8a8a" opacity=".5"/><circle cx="16" cy="12" r="1.1" fill="#ff8a8a" opacity=".5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="deco" id="deco"></div>
+
+<div id="app">
+
+  <!-- 首頁 -->
+  <section id="home" class="screen active">
+    <div class="crew" id="crew"></div>
+    <h1 data-zy="">加減乘除大挑戰</h1>
+
+    <div class="tabs">
+      <button class="tab" data-mode="solo"><svg class="ico"><use href="#i-user" xlink:href="#i-user"/></svg><span data-zy="">個人賽</span></button>
+      <button class="tab" data-mode="team"><svg class="ico"><use href="#i-team" xlink:href="#i-team"/></svg><span data-zy="">分組賽</span></button>
+    </div>
+
+    <!-- 個人賽：玩家與星星 -->
+    <div class="card" id="meCard">
+      <div class="me-top">
+        <label class="psel"><svg class="ico"><use href="#i-user" xlink:href="#i-user"/></svg><select id="pSelect" aria-label="選擇玩家"></select></label>
+        <div class="me-stars"><svg class="ico"><use href="#i-star" xlink:href="#i-star"/></svg><span id="meStars">0</span></div>
+      </div>
+      <div class="rank-row">
+        <span class="rank-title" id="meRank"></span>
+        <div class="rbar"><div id="meBar"></div></div>
+        <span class="rnext" id="meNext"></span>
+      </div>
+      <div class="p-actions" id="pActions">
+        <button class="pill soft" id="pAddBtn">＋ 新增玩家</button>
+        <button class="pill soft" id="pDelBtn">刪除這位玩家</button>
+      </div>
+      <div class="p-row" id="pAddRow" hidden>
+        <input id="pInput" maxlength="8" placeholder="輸入座號或綽號">
+        <button class="p-go" id="pAdd">新增</button>
+        <button class="p-cancel" id="pAddCancel">取消</button>
+      </div>
+      <div class="p-row" id="pDelRow" hidden>
+        <span class="p-ask" id="pDelAsk"></span>
+        <button class="p-go danger" id="pDelYes">刪除</button>
+        <button class="p-cancel" id="pDelNo">取消</button>
+      </div>
+    </div>
+
+    <!-- 分組賽：隊伍設定 -->
+    <div class="card" id="teamCard">
+      <div class="tnames">
+        <div class="tn" style="--tc:#ff5a4f"><span class="kcap">A</span><input id="tn0" maxlength="6" placeholder="輸入隊名" aria-label="左邊隊名"><small>按 A 搶答</small></div>
+        <div class="vsmall">VS</div>
+        <div class="tn" style="--tc:#3b7be0"><span class="kcap">L</span><input id="tn1" maxlength="6" placeholder="輸入隊名" aria-label="右邊隊名"><small>按 L 搶答</small></div>
+      </div>
+      <div class="trow"><span>每隊幾個人？</span>
+        <div class="sizesel">
+          <select id="sizeSel" aria-label="每隊人數"><option value="3">3 人</option><option value="4">4 人</option><option value="5">5 人</option><option value="custom">自行填寫</option></select>
+          <input id="sizeCustom" type="number" min="1" max="30" inputmode="numeric" aria-label="自行填寫人數" hidden>
+        </div>
+      </div>
+      <div class="twarn" id="tWarn"></div>
+      <p class="tip">兩隊各派一人站在鍵盤兩邊，一隊按 A 搶答，一隊按 L 搶答，贏的人再從四個選項選答案，一人一題輪流上台，每人輪兩次就結束。</p>
+    </div>
+
+    <div class="label" data-zy="">選擇題型</div>
+    <div class="op-grid" id="opGrid"></div>
+    <div class="foot"><button class="pill soundBtn"></button><button class="pill zyBtn"></button></div>
+  </section>
+
+  <!-- 選難度 -->
+  <section id="levels" class="screen">
+    <div class="topbar">
+      <button id="lvBackBtn" class="pill"><svg class="ico"><use href="#i-back" xlink:href="#i-back"/></svg><span data-zy="">回首頁</span></button>
+    </div>
+    <div class="lv-head">
+      <span class="icon-circle" id="lvIcon"></span>
+      <div><div class="lv-title" id="lvTitle"></div><div class="lv-sub" id="lvSub"></div></div>
+    </div>
+
+    <button class="level-btn easy" data-level="easy">
+      <span class="icon-circle"><svg class="ico"><use href="#i-sprout" xlink:href="#i-sprout"/></svg></span>
+      <span class="txt"><div class="name" data-zy="">簡單</div><div class="desc" id="desc-easy"></div><div class="best" id="best-easy"></div></span>
+      <svg class="ico go"><use href="#i-next" xlink:href="#i-next"/></svg>
+    </button>
+    <button class="level-btn mid" data-level="mid">
+      <span class="icon-circle"><svg class="ico"><use href="#i-rocket" xlink:href="#i-rocket"/></svg></span>
+      <span class="txt"><div class="name" data-zy="">進階</div><div class="desc" id="desc-mid"></div><div class="best" id="best-mid"></div></span>
+      <svg class="ico go"><use href="#i-next" xlink:href="#i-next"/></svg>
+    </button>
+    <button class="level-btn hard" data-level="hard">
+      <span class="icon-circle"><svg class="ico"><use href="#i-flame" xlink:href="#i-flame"/></svg></span>
+      <span class="txt"><div class="name" data-zy="">困難</div><div class="desc" id="desc-hard"></div><div class="best" id="best-hard"></div></span>
+      <svg class="ico go"><use href="#i-next" xlink:href="#i-next"/></svg>
+    </button>
+
+    <div class="foot"><button class="pill soundBtn"></button><button class="pill zyBtn"></button></div>
+  </section>
+
+  <!-- 遊戲 -->
+  <section id="game" class="screen">
+    <div class="topbar">
+      <button id="gameBackBtn" class="pill"><svg class="ico"><use href="#i-back" xlink:href="#i-back"/></svg><span data-zy="">返回</span></button>
+      <div id="levelTag" class="tag"></div>
+      <div class="pill score-pill" id="scorePill"><svg class="ico"><use href="#i-star" xlink:href="#i-star"/></svg><span id="scoreBox">0</span></div>
+    </div>
+    <div class="progress"><div id="bar"></div></div>
+    <div id="status" class="status"></div>
+
+    <div id="qcard" class="qcard">
+      <div class="mascot" id="gameMascot"></div>
+      <div id="question" class="question"></div>
+      <div id="feedback" class="feedback"></div>
+      <div id="hint" class="hint"></div>
+    </div>
+
+    <div id="choices" class="choices"></div>
+
+    <div id="pad" class="pad">
+      <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+      <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+      <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+      <button class="key del" data-k="del" aria-label="刪除"><svg class="ico"><use href="#i-del" xlink:href="#i-del"/></svg></button>
+      <button class="key" data-k="0">0</button>
+      <button class="key ok" data-k="ok" aria-label="確定"><svg class="ico"><use href="#i-check" xlink:href="#i-check"/></svg></button>
+    </div>
+  </section>
+
+  <!-- 分組搶答 -->
+  <section id="buzz" class="screen">
+    <div class="d-top">
+      <button id="buzzBackBtn" class="pill"><svg class="ico"><use href="#i-back" xlink:href="#i-back"/></svg><span data-zy="">返回</span></button>
+      <div id="buzzTag" class="tag"></div>
+      <div class="pill" id="bRound"></div>
+    </div>
+    <div class="progress d-prog"><div id="bBar"></div></div>
+    <div class="b-stage">
+      <div class="b-team" id="bt0" style="--tc:#ff5a4f"><div class="b-key">A</div><div class="b-name"></div><div class="b-score"><svg class="ico"><use href="#i-star" xlink:href="#i-star"/></svg><b>0</b></div><div class="b-who"></div></div>
+      <div class="b-center">
+        <div class="b-status" id="bStatus"></div>
+        <div class="b-q" id="bQ"></div>
+        <div class="b-timer" id="bTimer"></div>
+        <div class="b-choices" id="bChoices" hidden></div>
+        <button class="pill b-next" id="bNext" hidden></button>
+      </div>
+      <div class="b-team" id="bt1" style="--tc:#3b7be0"><div class="b-key">L</div><div class="b-name"></div><div class="b-score"><svg class="ico"><use href="#i-star" xlink:href="#i-star"/></svg><b>0</b></div><div class="b-who"></div></div>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="result" class="screen">
+    <div class="result-box">
+      <div class="mascot" id="resultMascot"></div>
+      <div id="rBody"></div>
+      <div class="r-btns">
+        <button id="againBtn" class="again"><svg class="ico"><use href="#i-redo" xlink:href="#i-redo"/></svg><span id="againTxt" data-zy="">再玩一次</span></button>
+        <button id="toLevelsBtn" class="back"><svg class="ico"><use href="#i-grid" xlink:href="#i-grid"/></svg><span data-zy="">換難度</span></button>
+      </div>
+      <button id="toHomeBtn" class="pill to-home"><svg class="ico"><use href="#i-home" xlink:href="#i-home"/></svg><span data-zy="">回首頁</span></button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* =====================================================================
+   設定區：想調整題數、時間、範圍、稱號，改這裡就好
+   ===================================================================== */
+const LEVELS = {
+  easy: { name:'簡單', color:'var(--green)', mode:'choice', total:10, hint:true, buzzTime:15,
+          solo:'四選一・有提示・10 題',   team:'搶答・每題 15 秒' },
+  mid:  { name:'進階', color:'var(--blue)',  mode:'input',  total:15, buzzTime:15,
+          solo:'自己按答案・15 題',       team:'搶答・每題 15 秒' },
+  hard: { name:'困難', color:'var(--red)',   mode:'input',  time:60,  buzzTime:10, blankRate:0.35,
+          solo:'限時 60 秒・有填空題',    team:'有填空題・搶答・每題 10 秒' }
+};
+
+const OPS = {
+  add: { name:'加法', mascot:'小加', icon:'plus',   c:'#ff7a2f', d:'#d9661c', eg:'3 + 5',
+         range:{ easy:'10 以內', mid:'20 以內進位', hard:'兩位數' },        hardStars:[15,9,4] },
+  sub: { name:'減法', mascot:'小減', icon:'minus',  c:'#14a3b3', d:'#0e7f8c', eg:'9 − 4',
+         range:{ easy:'10 以內', mid:'20 以內', hard:'兩位數' },        hardStars:[15,9,4] },
+  mul: { name:'乘法', mascot:'小乘', icon:'times',  c:'#8a5cf0', d:'#6339c9', eg:'6 × 7',
+         range:{ easy:'2～5 的乘法', mid:'2～9 的乘法', hard:'九九乘法' },  hardStars:[25,15,6] },
+  div: { name:'除法', mascot:'小除', icon:'divide', c:'#e5468e', d:'#b92c6b', eg:'24 ÷ 6',
+         range:{ easy:'除以 2～5', mid:'除以 2～9', hard:'九九除法' },      hardStars:[25,15,6] },
+  mix: { name:'綜合', icon:'mix', c:'#7b5cc9', d:'#5a3fa3', eg:'加減乘除混在一起',
+         range:{ easy:'四種混合', mid:'四種混合', hard:'四種混合' },        hardStars:[18,11,5] }
+};
+
+/* 累積星星的稱號：[需要的星星數, 稱號] */
+const RANKS = [[0,'星星新手'],[10,'算術小學徒'],[30,'計算小達人'],[60,'數學小博士'],[100,'加減乘除大師'],[200,'傳說大冒險家']];
+
+const TEAM_KEYS = ['add','sub','mul','div'];
+const SYM = { add:'+', sub:'−', mul:'×', div:'÷' };
+
+/* 各題型、各難度的出題方式：回傳 { op, l(左), r(右), res(答案) } */
+const GEN = {
+  add: {
+    easy: function(){ const a=randInt(1,9),  b=randInt(1,10-a);             return mk('add',a,b,a+b); },  // 和 ≤ 10
+    mid:  function(){ const a=randInt(2,9),  b=randInt(Math.max(2,11-a),9); return mk('add',a,b,a+b); },  // 進位，和 11～18
+    hard: function(){ const a=randInt(10,89),b=randInt(10,99-a);            return mk('add',a,b,a+b); }   // 兩位數
+  },
+  sub: {
+    easy: function(){ const a=randInt(2,10), b=randInt(1,a-1);              return mk('sub',a,b,a-b); },
+    mid:  function(){ const a=randInt(11,18),b=randInt(Math.max(2,a-9),9);  return mk('sub',a,b,a-b); },  // 退位
+    hard: function(){ const a=randInt(21,99),b=randInt(10,a-1);             return mk('sub',a,b,a-b); }
+  },
+  mul: {
+    easy: function(){ const a=pick([2,3,4,5]), b=randInt(1,9); return mk('mul',a,b,a*b); },
+    mid:  function(){ const a=randInt(2,9),    b=randInt(2,9); return mk('mul',a,b,a*b); },
+    hard: function(){ const a=randInt(2,9),    b=randInt(2,9); return mk('mul',a,b,a*b); }
+  },
+  div: {
+    easy: function(){ const d=pick([2,3,4,5]), q=randInt(1,9); return mk('div',d*q,d,q); },  // 一定整除
+    mid:  function(){ const d=randInt(2,9),    q=randInt(2,9); return mk('div',d*q,d,q); },
+    hard: function(){ const d=randInt(2,9),    q=randInt(2,9); return mk('div',d*q,d,q); }
+  }
+};
+
+const PRAISE = ['答對了！','好棒！','太厲害了！','完全正確！','你真聰明！'];
+const COMFORT = ['沒關係！','差一點點！','加油，你可以的！','下次一定行！'];   // 答錯時的鼓勵話
+const COLORS = ['#ffc531','#ff7a2f','#34c06f','#4c8dff','#ff8fbf','#9b7bff'];
+
+/* ===== 小工具 ===== */
+const $ = function(id){ return document.getElementById(id); };
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function randInt(min,max){ return min + Math.floor(Math.random()*(max-min+1)); }
+function mk(op,l,r,res){ return { op:op, l:l, r:r, res:res }; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t;} return a; }
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function show(id){ document.querySelectorAll('.screen').forEach(function(s){ s.classList.toggle('active', s.id===id); }); window.scrollTo(0,0); }
+function ico(id, cls){ return '<svg class="ico '+(cls||'')+'"><use href="#i-'+id+'" xlink:href="#i-'+id+'"/></svg>'; }
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* =====================================================================
+   四位吉祥物：小加、小減、小乘、小除（全部原創向量圖）
+   ===================================================================== */
+const MC = {
+  add: { body:'#ffa94d', belly:'#ffdcae', dark:'#e07b1f', sym:'#ff7a2f', top:22, eyeY:56 },  // 圓滾滾
+  sub: { body:'#3cc9d6', belly:'#c4f1f5', dark:'#1b98a6', sym:'#0e7f8c', top:32, eyeY:62 },  // 膠囊身體＋眼鏡
+  mul: { body:'#a17bff', belly:'#ddd0ff', dark:'#6f4ad6', sym:'#8a5cf0', top:24, eyeY:58 },  // 圓角方塊
+  div: { body:'#ff85b8', belly:'#ffd6e8', dark:'#d8508c', sym:'#e5468e', top:22, eyeY:58 }   // 蛋形
+};
+function mascotSVG(op){
+  const c = MC[op];
+  const body = {
+    add: '<circle cx="60" cy="64" r="42" fill="'+c.body+'"/>',
+    sub: '<rect x="13" y="32" width="94" height="70" rx="35" fill="'+c.body+'"/>',
+    mul: '<rect x="19" y="24" width="82" height="80" rx="30" fill="'+c.body+'"/>',
+    div: '<path d="M60 22C88 22 103 50 103 72c0 23-19 36-43 36S17 95 17 72c0-22 15-50 43-50z" fill="'+c.body+'"/>'
+  }[op];
+  const sym = {
+    add: '<g fill="'+c.sym+'"><rect x="57" y="0" width="6" height="18" rx="3"/><rect x="51" y="6" width="18" height="6" rx="3"/></g>',
+    sub: '<rect x="50" y="6" width="20" height="7" rx="3.5" fill="'+c.sym+'"/>',
+    mul: '<g fill="'+c.sym+'" transform="rotate(45 60 9)"><rect x="57" y="0" width="6" height="18" rx="3"/><rect x="51" y="6" width="18" height="6" rx="3"/></g>',
+    div: '<g fill="'+c.sym+'"><rect x="50" y="7" width="20" height="5" rx="2.5"/><circle cx="60" cy="2" r="3"/><circle cx="60" cy="17" r="3"/></g>'
+  }[op];
+  const glasses = op==='sub'
+    ? '<g fill="none" stroke="'+c.sym+'" stroke-width="3"><circle cx="45" cy="56" r="13.5"/><circle cx="75" cy="56" r="13.5"/><path d="M58.5 55q1.5-2 3 0"/></g>' : '';
+  return '<svg viewBox="0 0 120 120" aria-hidden="true">'
+    + '<ellipse cx="60" cy="114" rx="30" ry="5" fill="#000" opacity=".08"/>'
+    + '<line x1="60" y1="'+(c.top+2)+'" x2="60" y2="'+(op==='div'?20:15)+'" stroke="'+c.dark+'" stroke-width="4" stroke-linecap="round"/>'
+    + sym
+    + '<ellipse cx="40" cy="106" rx="11" ry="6" fill="'+c.dark+'"/><ellipse cx="80" cy="106" rx="11" ry="6" fill="'+c.dark+'"/>'
+    + body
+    + '<ellipse cx="60" cy="'+(op==='sub'?86:84)+'" rx="'+(op==='sub'?30:25)+'" ry="'+(op==='sub'?14:17)+'" fill="'+c.belly+'"/>'
+    + '<g transform="translate(0 '+(c.eyeY-56)+')">'
+    +   '<g class="eyes-open"><circle cx="45" cy="56" r="10" fill="#fff"/><circle cx="75" cy="56" r="10" fill="#fff"/>'
+    +   '<circle cx="47" cy="58" r="5.5" fill="#3b2f4a"/><circle cx="77" cy="58" r="5.5" fill="#3b2f4a"/>'
+    +   '<circle cx="49" cy="55" r="2" fill="#fff"/><circle cx="79" cy="55" r="2" fill="#fff"/></g>'
+    +   '<g class="eyes-happy" fill="none" stroke="#3b2f4a" stroke-width="4" stroke-linecap="round"><path d="M37 59q8-9 16 0"/><path d="M67 59q8-9 16 0"/></g>'
+    +   glasses
+    +   '<ellipse cx="31" cy="73" rx="7" ry="4.5" fill="#ff6b8a" opacity=".45"/><ellipse cx="89" cy="73" rx="7" ry="4.5" fill="#ff6b8a" opacity=".45"/>'
+    +   '<path class="m-normal" d="M52 76q8 7 16 0" fill="none" stroke="#3b2f4a" stroke-width="3.5" stroke-linecap="round"/>'
+    +   '<path class="m-happy" d="M49 74h22q-1 13-11 13t-11-13z" fill="#c2453b"/>'
+    + '</g></svg>';
+}
+function mascotGroup(keys){
+  if(keys.length===1) return mascotSVG(keys[0]);
+  return '<div class="mgroup">' + keys.map(function(k){ return '<div class="mini">'+mascotSVG(k)+'</div>'; }).join('') + '</div>';
+}
+function mood(id, m){
+  const el = $(id);
+  el.classList.remove('happy','cheer','jump');
+  if(m) el.classList.add(m);
+  if(m==='happy' && !reduceMotion){ void el.offsetWidth; el.classList.add('jump'); }
+}
+
+/* 首頁上方的四位吉祥物 */
+function buildCrew(){
+$('crew').innerHTML = TEAM_KEYS.map(function(k,i){
+  return '<div><div class="mascot bob" style="animation-delay:-'+(i*0.6)+'s">'+mascotSVG(k)+'</div>'
+       + '<div class="who" style="color:'+OPS[k].c+'">'+Z(OPS[k].mascot)+'</div></div>';
+}).join('');
+}
+
+/* 背景漂浮符號 */
+(function(){
+  const chars = ['+','−','×','÷','=','2','3','5','7','9'];
+  let html = '';
+  for(let i=0;i<14;i++){
+    html += '<span style="left:'+randInt(0,95)+'%;top:'+randInt(0,95)+'%;font-size:'+randInt(28,64)+'px;color:'+pick(COLORS)+';animation-delay:-'+randInt(0,7)+'s">'+pick(chars)+'</span>';
+  }
+  $('deco').innerHTML = html;
+})();
+
+/* ===== 音效：瀏覽器內建合成，不需要音檔 ===== */
+let ac = null, soundOn = true;
+function beep(freqs, dur, type){
+  dur = dur || 0.12; type = type || 'sine';
+  if(!soundOn) return;
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    freqs.forEach(function(f,i){
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = f;
+      const t = ac.currentTime + i*dur;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.2, t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t+dur+0.02);
+    });
+  }catch(e){}
+}
+function sGood(){ beep([660,880]); }
+function sBad(){ beep([240,180],0.15,'triangle'); }
+function sEnd(){ beep([523,659,784,1047],0.12); }
+function sTurn(){ beep([520,620],0.09); }
+function renderSoundBtns(){
+  document.querySelectorAll('.soundBtn').forEach(function(b){ b.innerHTML = soundOn ? ico('sound')+Z('音效：開') : ico('mute')+Z('音效：關'); });
+}
+
+/* ===== 特效 ===== */
+function burst(el){
+  if(reduceMotion) return;
+  const r = el.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
+  for(let i=0;i<12;i++){
+    const s = document.createElement('div');
+    s.className = 'spark';
+    s.innerHTML = ico('star');
+    const ang = Math.random()*Math.PI*2, dist = randInt(80,160);
+    s.style.cssText = 'left:'+(cx-11)+'px;top:'+(cy-11)+'px;color:'+pick(COLORS)+';--dx:'+(Math.cos(ang)*dist)+'px;--dy:'+(Math.sin(ang)*dist)+'px';
+    document.body.appendChild(s);
+    setTimeout(function(){ s.remove(); }, 800);
+  }
+}
+function confetti(){
+  if(reduceMotion) return;
+  for(let i=0;i<60;i++){
+    const c = document.createElement('div');
+    c.className = 'conf';
+    const w = randInt(7,12);
+    c.style.cssText = 'left:'+(Math.random()*100)+'vw;width:'+w+'px;height:'+(w*1.6)+'px;background:'+pick(COLORS)+';animation-duration:'+(2+Math.random()*1.5).toFixed(2)+'s;animation-delay:'+(Math.random()*.5).toFixed(2)+'s';
+    document.body.appendChild(c);
+    setTimeout(function(){ c.remove(); }, 4200);
+  }
+}
+
+/* =====================================================================
+   玩家資料：只存在這台裝置的瀏覽器，不會上傳
+   ===================================================================== */
+const STORE_KEY = 'math-adventure-v2';
+const store = (function(){
+  try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s && s.players && s.players.guest) return s; }catch(e){}
+  return { players:{ guest:{ name:'訪客', stars:0, best:{} } }, order:['guest'], cur:'guest', teamCount:2, mode:'solo' };
+})();
+/* 分組搶答：隊名不預設，讓學生自己取 */
+if(!Array.isArray(store.teamNames) || (store.teamNames[0]==='小加隊' && store.teamNames[1]==='小減隊')) store.teamNames = ['',''];
+if(!store.teamSize) store.teamSize = 3;
+if(store.zhuyin === undefined) store.zhuyin = false;   // 注音預設關閉
+function saveStore(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }catch(e){} }
+function me(){ if(!store.players[store.cur]) store.cur = 'guest'; return store.players[store.cur]; }
+function rankInfo(n){
+  let i = 0;
+  while(i+1 < RANKS.length && n >= RANKS[i+1][0]) i++;
+  const next = RANKS[i+1];
+  return { idx:i, title:RANKS[i][1], from:RANKS[i][0], to: next ? next[0] : null };
+}
+function starsHTML(n){ return [0,1,2].map(function(i){ return ico('star', i<n ? 'on' : 'off'); }).join(''); }
+
+/* =====================================================================
+   注音：首頁下方有開關，只標小朋友要讀的字
+   ZY：每個字的注音（臺灣國語課本讀音）
+   ZY_WORDS：破音字、輕聲依詞語另外標，例如「朋友」「起來」「位數」
+   ===================================================================== */
+const ZY = {"一": "ㄧ", "上": "ㄕㄤˋ", "下": "ㄒㄧㄚˋ", "不": "ㄅㄨˋ", "中": "ㄓㄨㄥ", "乘": "ㄔㄥˊ", "九": "ㄐㄧㄡˇ", "了": "˙ㄌㄜ", "人": "ㄖㄣˊ", "他": "ㄊㄚ", "以": "ㄧˇ", "位": "ㄨㄟˋ", "作": "ㄗㄨㄛˋ", "你": "ㄋㄧˇ", "佳": "ㄐㄧㄚ", "來": "ㄌㄞˊ", "係": "ㄒㄧˋ", "個": "ㄍㄜˋ", "傳": "ㄔㄨㄢˊ", "先": "ㄒㄧㄢ", "入": "ㄖㄨˋ", "內": "ㄋㄟˋ", "全": "ㄑㄩㄢˊ", "兩": "ㄌㄧㄤˇ", "共": "ㄍㄨㄥˋ", "其": "ㄑㄧˊ", "再": "ㄗㄞˋ", "冒": "ㄇㄠˋ", "出": "ㄔㄨ", "分": "ㄈㄣ", "刪": "ㄕㄢ", "到": "ㄉㄠˋ", "剩": "ㄕㄥˋ", "加": "ㄐㄧㄚ", "勝": "ㄕㄥˋ", "十": "ㄕˊ", "升": "ㄕㄥ", "博": "ㄅㄛˊ", "厲": "ㄌㄧˋ", "去": "ㄑㄩˋ", "叉": "ㄔㄚ", "友": "ㄧㄡˇ", "取": "ㄑㄩˇ", "可": "ㄎㄜˇ", "台": "ㄊㄞˊ", "右": "ㄧㄡˋ", "各": "ㄍㄜˋ", "合": "ㄏㄜˊ", "名": "ㄇㄧㄥˊ", "呢": "˙ㄋㄜ", "和": "ㄏㄢˋ", "啦": "˙ㄌㄚ", "喔": "ㄛ", "單": "ㄉㄢ", "嗎": "˙ㄇㄚ", "四": "ㄙˋ", "回": "ㄏㄨㄟˊ", "困": "ㄎㄨㄣˋ", "在": "ㄗㄞˋ", "型": "ㄒㄧㄥˊ", "填": "ㄊㄧㄢˊ", "增": "ㄗㄥ", "士": "ㄕˋ", "多": "ㄉㄨㄛ", "大": "ㄉㄚˋ", "太": "ㄊㄞˋ", "好": "ㄏㄠˇ", "始": "ㄕˇ", "學": "ㄒㄩㄝˊ", "完": "ㄨㄢˊ", "定": "ㄉㄧㄥˋ", "客": "ㄎㄜˋ", "害": "ㄏㄞˋ", "家": "ㄐㄧㄚ", "寫": "ㄒㄧㄝˇ", "對": "ㄉㄨㄟˋ", "小": "ㄒㄧㄠˇ", "就": "ㄐㄧㄡˋ", "左": "ㄗㄨㄛˇ", "差": "ㄔㄚ", "己": "ㄐㄧˇ", "師": "ㄕ", "幫": "ㄅㄤ", "平": "ㄆㄧㄥˊ", "幾": "ㄐㄧˇ", "度": "ㄉㄨˋ", "座": "ㄗㄨㄛˋ", "強": "ㄑㄧㄤˊ", "很": "ㄏㄣˇ", "後": "ㄏㄡˋ", "徒": "ㄊㄨˊ", "得": "ㄉㄜˊ", "從": "ㄘㄨㄥˊ", "想": "ㄒㄧㄤˇ", "成": "ㄔㄥˊ", "或": "ㄏㄨㄛˋ", "戰": "ㄓㄢˋ", "手": "ㄕㄡˇ", "才": "ㄘㄞˊ", "打": "ㄉㄚˇ", "把": "ㄅㄚˇ", "拆": "ㄔㄞ", "拿": "ㄋㄚˊ", "按": "ㄢˋ", "挑": "ㄊㄧㄠ", "接": "ㄐㄧㄝ", "提": "ㄊㄧˊ", "換": "ㄏㄨㄢˋ", "搶": "ㄑㄧㄤˇ", "擇": "ㄗㄜˊ", "效": "ㄒㄧㄠˋ", "數": "ㄕㄨˇ", "新": "ㄒㄧㄣ", "明": "ㄇㄧㄥˊ", "星": "ㄒㄧㄥ", "是": "ㄕˋ", "時": "ㄕˊ", "最": "ㄗㄨㄟˋ", "有": "ㄧㄡˇ", "朋": "ㄆㄥˊ", "束": "ㄕㄨˋ", "果": "ㄍㄨㄛˇ", "案": "ㄢˋ", "棒": "ㄅㄤˋ", "次": "ㄘˋ", "正": "ㄓㄥˋ", "步": "ㄅㄨˋ", "每": "ㄇㄟˇ", "比": "ㄅㄧˇ", "沒": "ㄇㄟˊ", "油": "ㄧㄡˊ", "法": "ㄈㄚˇ", "派": "ㄆㄞˋ", "流": "ㄌㄧㄡˊ", "消": "ㄒㄧㄠ", "混": "ㄏㄨㄣˋ", "減": "ㄐㄧㄢˇ", "湊": "ㄘㄡˋ", "獲": "ㄏㄨㄛˋ", "玩": "ㄨㄢˊ", "的": "˙ㄉㄜ", "盤": "ㄆㄢˊ", "看": "ㄎㄢˋ", "真": "ㄓㄣ", "確": "ㄑㄩㄝˋ", "示": "ㄕˋ", "神": "ㄕㄣˊ", "秒": "ㄇㄧㄠˇ", "種": "ㄓㄨㄥˇ", "稱": "ㄔㄥ", "積": "ㄐㄧ", "空": "ㄎㄨㄥ", "站": "ㄓㄢˋ", "第": "ㄉㄧˋ", "答": "ㄉㄚˊ", "算": "ㄙㄨㄢˋ", "簡": "ㄐㄧㄢˇ", "糖": "ㄊㄤˊ", "紀": "ㄐㄧˋ", "級": "ㄐㄧˊ", "累": "ㄌㄟˇ", "組": "ㄗㄨˇ", "結": "ㄐㄧㄝˊ", "給": "ㄍㄟˇ", "綜": "ㄗㄨㄥˋ", "綽": "ㄔㄨㄛˋ", "練": "ㄌㄧㄢˋ", "習": "ㄒㄧˊ", "聰": "ㄘㄨㄥ", "能": "ㄋㄥˊ", "自": "ㄗˋ", "號": "ㄏㄠˋ", "行": "ㄒㄧㄥˊ", "術": "ㄕㄨˋ", "計": "ㄐㄧˋ", "訪": "ㄈㄤˇ", "試": "ㄕˋ", "說": "ㄕㄨㄛ", "請": "ㄑㄧㄥˇ", "賽": "ㄙㄞˋ", "贏": "ㄧㄥˊ", "走": "ㄗㄡˇ", "起": "ㄑㄧˇ", "輪": "ㄌㄨㄣˊ", "輸": "ㄕㄨ", "返": "ㄈㄢˇ", "這": "ㄓㄜˋ", "連": "ㄌㄧㄢˊ", "進": "ㄐㄧㄣˋ", "達": "ㄉㄚˊ", "選": "ㄒㄩㄢˇ", "還": "ㄏㄞˊ", "邊": "ㄅㄧㄢ", "部": "ㄅㄨˋ", "錄": "ㄌㄨˋ", "錯": "ㄘㄨㄛˋ", "鍵": "ㄐㄧㄢˋ", "開": "ㄎㄞ", "間": "ㄐㄧㄢ", "關": "ㄍㄨㄢ", "限": "ㄒㄧㄢˋ", "除": "ㄔㄨˊ", "隊": "ㄉㄨㄟˋ", "階": "ㄐㄧㄝ", "險": "ㄒㄧㄢˇ", "難": "ㄋㄢˊ", "音": "ㄧㄣ", "頁": "ㄧㄝˋ", "項": "ㄒㄧㄤˋ", "顆": "ㄎㄜ", "題": "ㄊㄧˊ", "首": "ㄕㄡˇ", "高": "ㄍㄠ", "點": "ㄉㄧㄢˇ", "注": "ㄓㄨˋ"};
+const ZY_WORDS = {"朋友": ["ㄆㄥˊ", "˙ㄧㄡ"], "起來": ["ㄑㄧˇ", "˙ㄌㄞ"], "出來": ["ㄔㄨ", "˙ㄌㄞ"], "關係": ["ㄍㄨㄢ", "˙ㄒㄧ"], "位數": ["ㄨㄟˋ", "ㄕㄨˋ"], "數學": ["ㄕㄨˋ", "ㄒㄩㄝˊ"], "填空": ["ㄊㄧㄢˊ", "ㄎㄨㄥˋ"]};
+function rubyOf(c, z){
+  let light = false, tone = '';
+  if(z.charAt(0) === '˙'){ light = true; z = z.slice(1); }
+  if('ˊˇˋ'.indexOf(z.charAt(z.length-1)) >= 0){ tone = z.charAt(z.length-1); z = z.slice(0,-1); }
+  let col = '';
+  for(let k=0;k<z.length;k++){ const ch = z.charAt(k); col += '<i'+(ch==='ㄧ' ? ' class="yi"' : '')+'>'+ch+'</i>'; }
+  return '<span class="zc">'+c+'<span class="zp">'+(light ? '<i class="lt">˙</i>' : '')+col
+       + (tone ? '<i class="tn">'+tone+'</i>' : '')+'</span></span>';
+}
+function zy(str){
+  return String(str).split(/(<[^>]*>)/).map(function(part){
+    if(part.charAt(0) === '<') return part;          // HTML 標籤不動
+    let out = '', i = 0;
+    while(i < part.length){
+      let hit = null;
+      for(const w in ZY_WORDS){ if(part.substr(i, w.length) === w){ hit = w; break; } }
+      if(hit){
+        for(let k=0;k<hit.length;k++) out += rubyOf(hit[k], ZY_WORDS[hit][k]);
+        i += hit.length; continue;
+      }
+      const c = part[i];
+      out += ZY[c] ? rubyOf(c, ZY[c]) : c;
+      i++;
+    }
+    return out;
+  }).join('');
+}
+/* 小朋友自己取的名字不加注音（把中文字先換成編碼，注音就會略過） */
+function nz(str){ return esc(str).replace(/[\u4e00-\u9fff]/g, function(c){ return '&#'+c.charCodeAt(0)+';'; }); }
+function Z(str){ return store.zhuyin ? zy(str) : str; }
+function setZ(el, text){ el.dataset.zy = text; el.innerHTML = Z(text); }
+function applyStaticZy(){
+  document.querySelectorAll('[data-zy]').forEach(function(el){
+    if(!el.dataset.zy) el.dataset.zy = el.textContent.trim();
+    el.innerHTML = Z(el.dataset.zy);
+  });
+}
+function renderZyBtns(){
+  document.querySelectorAll('.zyBtn').forEach(function(b){
+    b.innerHTML = '<span class="zy-ico">ㄅ</span>' + Z('注音：' + (store.zhuyin ? '開' : '關'));
+  });
+}
+function refreshZy(){
+  document.body.classList.toggle('zy-on', !!store.zhuyin);
+  applyStaticZy(); renderSoundBtns(); renderZyBtns(); buildCrew(); buildOpGrid(); renderHome();
+  if($('levels').classList.contains('active')) refreshLevels();
+}
+
+/* ===== 首頁 ===== */
+let mode = store.mode || 'solo';
+function renderHome(){
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.dataset.mode===mode); });
+  $('meCard').style.display   = mode==='solo' ? '' : 'none';
+  $('teamCard').style.display = mode==='team' ? '' : 'none';
+  /* 個人賽：玩家下拉選單 */
+  const p = me(), ri = rankInfo(p.stars);
+  $('pSelect').innerHTML = store.order.map(function(id){
+    const x = store.players[id];
+    return '<option value="'+id+'"'+(id===store.cur?' selected':'')+'>'+esc(x.name)+'（'+x.stars+' 顆星）</option>';
+  }).join('');
+  $('pDelBtn').hidden = store.cur==='guest';
+  $('meStars').textContent = p.stars;
+  $('meRank').innerHTML = Z(ri.title);
+  if(ri.to){
+    $('meBar').style.width = ((p.stars-ri.from)/(ri.to-ri.from)*100) + '%';
+    $('meNext').innerHTML = Z('再 ' + (ri.to-p.stars) + ' 顆升級');
+  }else{
+    $('meBar').style.width = '100%';
+    $('meNext').innerHTML = Z('最高稱號！');
+  }
+  /* 分組搶答：隊名與人數 */
+  [0,1].forEach(function(i){ if(document.activeElement !== $('tn'+i)) $('tn'+i).value = store.teamNames[i] || ''; });
+  if(!store.sizeCustom && [3,4,5].indexOf(store.teamSize) >= 0){
+    $('sizeSel').value = String(store.teamSize); $('sizeCustom').hidden = true;
+  }else{
+    $('sizeSel').value = 'custom'; $('sizeCustom').hidden = false;
+    if(document.activeElement !== $('sizeCustom')) $('sizeCustom').value = store.teamSize;
+  }
+}
+document.querySelectorAll('.tab').forEach(function(t){ t.onclick = function(){ mode = t.dataset.mode; store.mode = mode; saveStore(); renderHome(); }; });
+
+function buildOpGrid(){
+$('opGrid').innerHTML = Object.keys(OPS).map(function(k){
+  const o = OPS[k];
+  return '<button class="op-btn '+(k==='mix'?'mix':'')+'" data-op="'+k+'" style="--c:'+o.c+';--d:'+o.d+'">'
+    + '<span class="icon-circle">'+ico(o.icon)+'</span>'
+    + '<span class="txt"><div class="name">'+Z(o.name)+'</div><div class="eg">'+Z(o.eg)+'</div></span></button>';
+}).join('');
+document.querySelectorAll('.op-btn').forEach(function(b){ b.onclick = function(){ chooseOp(b.dataset.op); }; });
+}
+
+/* ===== 個人賽：新增／刪除玩家（不用跳出視窗，直接在卡片上確認） ===== */
+function closePRows(){ $('pAddRow').hidden = true; $('pDelRow').hidden = true; $('pActions').hidden = false; }
+function addPlayer(){
+  const name = $('pInput').value.trim();
+  if(!name){ $('pInput').focus(); return; }
+  const id = 'p' + Date.now();
+  store.players[id] = { name:name, stars:0, best:{} };
+  store.order.push(id);
+  store.cur = id;
+  $('pInput').value = '';
+  saveStore(); closePRows(); renderHome();
+}
+$('pSelect').onchange = function(){ store.cur = this.value; saveStore(); closePRows(); renderHome(); };
+$('pAddBtn').onclick = function(){ closePRows(); $('pActions').hidden = true; $('pAddRow').hidden = false; $('pInput').focus(); };
+$('pAddCancel').onclick = closePRows;
+$('pAdd').onclick = addPlayer;
+$('pInput').addEventListener('keydown', function(e){ if(e.key==='Enter') addPlayer(); });
+$('pDelBtn').onclick = function(){
+  const p = me();
+  closePRows();
+  $('pDelAsk').textContent = '確定刪除「' + p.name + '」和他的 ' + p.stars + ' 顆星星嗎？';
+  $('pActions').hidden = true; $('pDelRow').hidden = false;
+};
+$('pDelNo').onclick = closePRows;
+$('pDelYes').onclick = function(){
+  const id = store.cur;
+  if(id !== 'guest'){
+    delete store.players[id];
+    store.order = store.order.filter(function(x){ return x !== id; });
+    store.cur = 'guest';
+    saveStore();
+  }
+  closePRows(); renderHome();
+};
+
+/* ===== 分組搶答：隊名與人數 ===== */
+[0,1].forEach(function(i){
+  $('tn'+i).addEventListener('input', function(){
+    store.teamNames[i] = this.value; saveStore();
+    this.classList.remove('need'); $('tWarn').textContent = '';
+  });
+});
+$('sizeSel').onchange = function(){
+  if(this.value === 'custom'){
+    store.sizeCustom = true; saveStore(); renderHome(); $('sizeCustom').focus(); $('sizeCustom').select();
+  }else{
+    store.sizeCustom = false; store.teamSize = +this.value; saveStore(); renderHome();
+  }
+};
+$('sizeCustom').addEventListener('input', function(){
+  const v = parseInt(this.value, 10);
+  if(v >= 1 && v <= 30){ store.teamSize = v; saveStore(); }
+});
+
+/* ===== 選難度 ===== */
+let curOp = 'mul';
+function chooseOp(op){
+  if(mode==='team'){
+    const miss = [0,1].filter(function(i){ return !(store.teamNames[i]||'').trim(); });
+    if(miss.length){
+      $('tWarn').textContent = '請先幫兩隊取好隊名，才能開始比賽喔！';
+      miss.forEach(function(i){ const el = $('tn'+i); el.classList.remove('need'); void el.offsetWidth; el.classList.add('need'); });
+      $('teamCard').scrollIntoView({ behavior:'smooth', block:'center' });
+      $('tn'+miss[0]).focus();
+      return;
+    }
+  }
+  curOp = op;
+  const o = OPS[op];
+  $('lvIcon').innerHTML = ico(o.icon);
+  $('lvIcon').style.color = o.c;
+  $('lvTitle').innerHTML = Z(o.name);
+  $('lvTitle').style.color = o.c;
+  refreshLevels();
+  show('levels');
+}
+function refreshLevels(){
+  $('lvSub').innerHTML = Z(mode==='solo'
+    ? '個人賽・玩家：' + nz(me().name)
+    : '分組搶答・' + nz(store.teamNames[0].trim()) + ' VS ' + nz(store.teamNames[1].trim()) + '・每隊 ' + teamSize() + ' 人');
+  Object.keys(LEVELS).forEach(function(l){
+    $('desc-'+l).innerHTML = Z(OPS[curOp].range[l] + '・' + (mode==='solo' ? LEVELS[l].solo : LEVELS[l].team));
+    const b = mode==='solo' ? me().best[curOp+'-'+l] : null;
+    $('best-'+l).innerHTML = b ? '<span class="mini-stars">'+starsHTML(b.stars)+'</span>　'+Z('最佳 '+b.score+' 分') : '';
+  });
+}
+
+/* ===== 遊戲狀態 ===== */
+let firstOk = 0, retryOk = 0;   // 第一次就答對／第二次才答對的題數
+let level, cfg, q, qNo=0, lastKey='', qIndex, correct, score, combo, wrongs, input, locked, timers=[], endTime, tick, teams=[];
+
+function clearTimers(){ timers.forEach(clearTimeout); timers=[]; clearInterval(tick); }
+function later(fn,ms){ timers.push(setTimeout(fn,ms)); }
+
+function start(l){
+  level = l; cfg = LEVELS[l]; lastKey = '';
+  clearTimers();
+  if(mode==='team'){ startBuzz(); return; }
+  qIndex = 0; qNo = 0; correct = 0; firstOk = 0; retryOk = 0; score = 0; combo = 0; wrongs = [];
+  $('levelTag').innerHTML = Z(OPS[curOp].name + '・' + cfg.name);
+  $('levelTag').style.background = OPS[curOp].c;
+  $('choices').style.display = cfg.mode==='choice' ? 'grid' : 'none';
+  $('pad').style.display     = cfg.mode==='input'  ? 'grid' : 'none';
+  show('game');
+  if(cfg.time){ endTime = Date.now() + cfg.time*1000; tick = setInterval(updateStatus, 200); }
+  nextQuestion();
+}
+
+function makeQuestion(){
+  let nq, key, tries = 0;
+  do{
+    const op = curOp==='mix' ? pick(['add','sub','mul','div']) : curOp;
+    nq = GEN[op][level]();
+    key = nq.op + nq.l + '_' + nq.r;
+  }while(key === lastKey && ++tries < 10);
+  lastKey = key;
+  nq.blank = (cfg.blankRate && Math.random() < cfg.blankRate) ? 'r' : 'res';   // 填空題：挖空右邊的數
+  nq.answer = nq.blank==='r' ? nq.r : nq.res;
+  return nq;
+}
+
+function makeChoices(q){
+  const ans = q.answer, set = new Set([ans]);
+  let cands = [ans+1, ans-1, ans+2, ans-2];
+  if(q.op==='mul'){ cands.push(ans+q.l, ans-q.l, ans+q.r, ans-q.r); }
+  if(q.op==='add' || q.op==='sub'){ cands.push(ans+10); }
+  shuffle(cands);
+  for(const c of cands){ if(set.size>=4) break; if(c>=0) set.add(c); }
+  while(set.size<4) set.add(randInt(0, ans+10));
+  return shuffle(Array.from(set));
+}
+
+function qHTML(q, inp){
+  const slot = '<span class="slot '+(inp?'filled':'')+'">'+(inp || '?')+'</span>';
+  const op = '<span class="op">'+SYM[q.op]+'</span>', eq = '<span class="op">=</span>';
+  const right = q.blank==='r'   ? slot : '<span class="n2">'+q.r+'</span>';
+  const res   = q.blank==='res' ? slot : '<span>'+q.res+'</span>';
+  return '<span class="n1">'+q.l+'</span> '+op+' '+right+' '+eq+' '+res;
+}
+function renderQuestion(){ $('question').innerHTML = qHTML(q, input); }
+
+/* =====================================================================
+   提示：用國小課本常見的圖和算法
+   - 加法：十格框「湊十」；兩位數用「拆開算」
+   - 減法：十格框「破十」（拿走的打叉）；兩位數「先減十位、再減個位」
+   - 乘法：「每個小朋友有幾顆糖果，幾個小朋友一共幾顆？」畫出小朋友和手上的糖果
+   - 除法：「幾顆糖果平分給幾個小朋友，每人幾顆？」畫出一堆糖果，公布答案時分到每個人手上
+   ===================================================================== */
+function rep(cls, n){ return Array(Math.max(0,n)).fill(cls); }
+function tenFrames(list){
+  const n = Math.max(10, Math.ceil(list.length/10)*10);
+  let h = '';
+  for(let f=0; f<n; f+=10){
+    let c = '';
+    for(let k=f; k<f+10; k++) c += '<i class="'+(list[k]||'')+'"></i>';
+    h += '<span class="tf">'+c+'</span>';
+  }
+  return '<div class="dots">'+h+'</div>';
+}
+/* 糖果和小朋友（原創向量圖） */
+const CANDY_COLORS = ['#ff6fae','#ff9f43','#9b6bff','#20c4b0','#4c8dff'];
+const KID_COLORS   = ['#ff7a2f','#14a3b3','#8a5cf0','#e5468e','#34c06f','#4c8dff','#f5b301','#ff6262','#7b5cc9'];
+function candyIcon(color){ return '<svg class="cd" style="color:'+color+'"><use href="#i-candy" xlink:href="#i-candy"/></svg>'; }
+/* 一堆糖果（還沒分） */
+function pileHTML(n){
+  let h = '';
+  for(let k=0;k<n;k++) h += candyIcon(CANDY_COLORS[k % CANDY_COLORS.length]);
+  return '<div class="dots"><span class="pile">'+h+'</span></div>';
+}
+/* n 個小朋友，每人手上 each 顆糖果（each = 0 表示還沒拿到，顯示問號） */
+function kidsHTML(n, each){
+  let h = '';
+  for(let i=0;i<n;i++){
+    const c = KID_COLORS[i % KID_COLORS.length];
+    let cs = '';
+    for(let k=0;k<each;k++) cs += candyIcon(c);
+    h += '<span class="kid"><svg class="kd" style="color:'+c+'"><use href="#i-kid" xlink:href="#i-kid"/></svg>'
+      + '<span class="cand" style="grid-template-columns:repeat('+Math.min(Math.max(each,1),3)+',22px)">'
+      + (each ? cs : '<b class="q">?</b>') + '</span></span>';
+  }
+  return '<div class="dots kids">'+h+'</div>';
+}
+function skipCount(n, terms){ let a=[]; for(let k=1;k<=terms;k++) a.push(n*k); return a.join('、')+'……'; }
+function tens(n){ return Math.floor(n/10)*10; }
+
+function hintHTML(q, reveal){
+  const l = q.l, r = q.r, res = q.res, blankR = q.blank==='r';
+  let say = '', pic = '';
+  switch(q.op){
+    case 'add':
+      if(res <= 20){
+        pic = tenFrames(rep('o',l).concat(rep('b',r)));
+        say = (l < 10 && res > 10)
+          ? '先湊成 10：'+l+' + '+(10-l)+' = 10，再加剩下的 '+(r-(10-l))
+          : l+' 個和 '+r+' 個合起來，共有幾個？';
+      }else if(blankR){
+        say = '想一想：'+res+' − '+l+' = ?';
+      }else{
+        say = '拆開算：十位 '+tens(l)+' + '+tens(r)+' = '+(tens(l)+tens(r))+'，個位 '+(l%10)+' + '+(r%10)+' = '+(l%10+r%10)+'，再合起來';
+      }
+      break;
+    case 'sub':
+      if(l <= 20){
+        if(l > 10 && r > l-10){
+          pic = tenFrames(rep('x',r).concat(rep('o',10-r)).concat(rep('o',l-10)));
+          say = '把 '+l+' 拆成 10 和 '+(l-10)+'：10 − '+r+' = '+(10-r)+'，再加 '+(l-10);
+        }else{
+          pic = tenFrames(rep('o',l-r).concat(rep('x',r)));
+          say = l+' 個拿走 '+r+' 個（打叉的），還剩幾個？';
+        }
+      }else if(blankR){
+        say = '想一想：'+l+' − '+res+' = ?';
+      }else{
+        say = '分兩步：先減十位 '+l+' − '+tens(r)+' = '+(l-tens(r))+'，再減個位 '+(r%10);
+      }
+      break;
+    case 'mul':
+      if(blankR && !reveal){
+        say = '每個小朋友有 '+l+' 顆糖果，一共 '+res+' 顆，是幾個小朋友呢？'
+            + '<span class="h-tip">'+l+' 顆 '+l+' 顆數數看：'+skipCount(l,3)+'</span>';
+        pic = pileHTML(res);
+      }else{
+        say = '每個小朋友有 '+l+' 顆糖果，'+r+' 個小朋友一共有幾顆？'
+            + '<span class="h-tip">'+(r <= 5 ? Array(r).fill(l).join(' + ') : '一個一個數下去：'+skipCount(l,3))+'</span>';
+        pic = kidsHTML(r, l);
+      }
+      break;
+    case 'div':
+      if(reveal){
+        say = l+' 顆糖果分給 '+r+' 個小朋友，每人 '+res+' 顆';
+        pic = kidsHTML(r, res);
+      }else if(blankR){
+        say = '有 '+l+' 顆糖果，每人分 '+res+' 顆，可以分給幾個小朋友？'
+            + '<span class="h-tip">想想乘法：'+res+' × ? = '+l+'</span>';
+        pic = pileHTML(l);
+      }else{
+        say = '有 '+l+' 顆糖果，平分給 '+r+' 個小朋友，每人可以拿幾顆？'
+            + '<span class="h-tip">想想乘法：'+r+' × ? = '+l+'</span>';
+        pic = pileHTML(l) + kidsHTML(r, 0);
+      }
+      break;
+  }
+  const ans = reveal ? '<div class="h-ans">'+l+' '+SYM[q.op]+' '+r+' = '+res+'</div>' : '';
+  return '<div class="h-say">'+Z(say)+'</div>' + pic + ans;
+}
+
+function updateStatus(){
+  if(cfg.time){
+    const left = Math.max(0, Math.ceil((endTime - Date.now())/1000));
+    $('status').innerHTML = '<span class="'+(left<=10?'warn':'')+'">'+ico('clock')+Z(' 剩 '+left+' 秒')+'</span><span class="combo">'+ico('flame')+Z(' 連對 '+combo)+'</span>';
+    $('bar').style.width = (Math.max(0,endTime-Date.now())/(cfg.time*1000)*100) + '%';
+    if(left<=0) finish();
+  }else{
+    $('status').innerHTML = Z('第 '+(qNo+1)+' / '+cfg.total+' 題');
+    $('bar').style.width = (qIndex/cfg.total*100) + '%';
+  }
+  $('scoreBox').textContent = score;
+}
+
+function nextQuestion(){
+  if(!cfg.time && qIndex >= cfg.total){ finish(); return; }
+  q = makeQuestion(); qNo = qIndex; input = ''; locked = false;
+  $('gameMascot').innerHTML = mascotSVG(q.op);
+  mood('gameMascot', null);
+  $('qcard').className = 'qcard';
+  $('feedback').className = 'feedback'; $('feedback').textContent = '';
+  $('hint').innerHTML = cfg.hint ? '<button class="pill" id="hintBtn">'+ico('bulb')+Z('提示')+'</button>' : '';
+  if(cfg.hint) $('hintBtn').onclick = function(){ $('hint').innerHTML = hintHTML(q, false); };
+  if(cfg.mode==='choice'){
+    $('choices').innerHTML = '';
+    makeChoices(q).forEach(function(v){
+      const b = document.createElement('button');
+      b.className = 'choice'; b.textContent = v; b.dataset.v = v;
+      b.onclick = function(){ submit(v, b); };
+      $('choices').appendChild(b);
+    });
+  }
+  renderQuestion(); updateStatus();
+}
+
+function submit(val, btn){
+  if(locked) return;
+  locked = true;
+  const ok = val === q.answer;
+
+  /* 第一次答錯：先不公布答案，給提示、再試一次 */
+  if(!ok && !q.retry){
+    q.retry = true; combo = 0;
+    beep([392,330], 0.12, 'triangle');
+    mood('gameMascot','cheer');
+    $('qcard').className = 'qcard bad shake';
+    $('feedback').className = 'feedback bad';
+    $('feedback').innerHTML = Z(pick(COMFORT) + '看看提示，再試一次！');
+    $('hint').innerHTML = hintHTML(q, false);
+    if(btn){ btn.classList.add('wrong'); btn.disabled = true; }
+    input = ''; renderQuestion(); updateStatus();
+    later(function(){ locked = false; $('qcard').classList.remove('shake'); }, 600);
+    return;
+  }
+
+  if(ok){
+    correct++;
+    if(q.retry){ retryOk++; combo = 0; score += 5; wrongs.push(Object.assign({}, q)); }   // 第二次才答對：分數一半，也列進「再多練習」
+    else{ firstOk++; combo++; score += 10 + (cfg.time ? Math.min(combo-1,5)*2 : 0); }
+    sGood();
+    mood('gameMascot','happy');
+    $('qcard').className = 'qcard good pop';
+    $('feedback').className = 'feedback good';
+    $('feedback').innerHTML = Z(q.retry ? '你自己想出來了，好棒！'
+      : (cfg.time && combo>=3) ? pick(PRAISE)+' 連對 '+combo+' 題！' : pick(PRAISE));
+    if(btn) btn.classList.add('right');
+    burst($('qcard'));
+  }else{
+    combo = 0;
+    wrongs.push(Object.assign({}, q));
+    beep([392,330], 0.12, 'triangle');
+    mood('gameMascot','cheer');
+    $('qcard').className = 'qcard bad';
+    $('feedback').className = 'feedback bad';
+    $('feedback').innerHTML = Z(pick(COMFORT) + '答案是 ' + q.answer);
+    if(cfg.mode==='choice'){
+      if(btn) btn.classList.add('wrong');
+      Array.from($('choices').children).forEach(function(c){ if(+c.dataset.v===q.answer) c.classList.add('right'); });
+    }
+    $('hint').innerHTML = hintHTML(q, true);
+  }
+  input = String(q.answer); renderQuestion();
+  qIndex++; updateStatus();
+  const wait = ok ? (q.retry ? 1300 : (cfg.time ? 400 : 850)) : (cfg.time ? 2000 : 3200);
+  later(nextQuestion, wait);
+}
+
+function chipHTML(w){
+  const r   = w.blank==='r'   ? '<b>'+w.r+'</b>'   : w.r;
+  const res = w.blank==='res' ? '<b>'+w.res+'</b>' : w.res;
+  return '<span class="chip">'+w.l+' '+SYM[w.op]+' '+r+' = '+res+'</span>';
+}
+
+function finish(){
+  if($('result').classList.contains('active')) return;
+  clearTimers();
+  finishSolo();
+  sEnd();
+}
+
+function finishSolo(){
+  let stars;
+  if(cfg.time){
+    const th = OPS[curOp].hardStars;
+    const pts = firstOk + retryOk*0.5;   // 第二次才答對算半題
+    stars = pts>=th[0] ? 3 : pts>=th[1] ? 2 : pts>=th[2] ? 1 : 0;
+  }else{
+    const r = (firstOk + retryOk*0.5) / cfg.total;
+    stars = r>=0.9 ? 3 : r>=0.7 ? 2 : r>=0.4 ? 1 : 0;
+  }
+  const p = me(), before = rankInfo(p.stars);
+  p.stars += stars;
+  const after = rankInfo(p.stars);
+  const key = curOp+'-'+level, best = p.best[key];
+  const newBest = !best || score > best.score;
+  if(newBest) p.best[key] = { stars:stars, score:score };
+  saveStore();
+
+  let badges = '';
+  if(stars) badges += '<span class="badge">'+ico('star')+' +'+stars+'　'+nz(p.name)+' 累積 '+p.stars+' 顆</span>';
+  if(after.idx > before.idx) badges += '<span class="badge up">'+ico('trophy')+'升級！'+after.title+'</span>';
+  else if(newBest && best) badges += '<span class="badge">'+ico('trophy')+'新紀錄！</span>';
+
+  let wrongHTML = '';
+  if(wrongs.length){
+    const seen = new Set(), items = [];
+    wrongs.forEach(function(w){
+      const k = w.op + w.l + '_' + w.r; if(seen.has(k)) return; seen.add(k);
+      items.push(chipHTML(w));
+    });
+    wrongHTML = '<div class="wrong-list"><h3>'+ico('book')+'再多練習這幾題</h3><div class="chips">'+items.join('')+'</div></div>';
+  }else if(correct){
+    wrongHTML = '<div class="all-right">'+ico('trophy')+'全部答對，太強了！</div>';
+  }
+
+  $('rBody').innerHTML = Z(
+      '<div class="stars">'+starsHTML(stars)+'</div>'
+    + '<div class="r-title">'+['加油，再挑戰一次！','不錯喔！','很厲害！','太神啦！'][stars]+'</div>'
+    + '<div class="r-sub">'+OPS[curOp].name+'・'+cfg.name+'</div>'
+    + '<div class="r-line">'+(cfg.time ? cfg.time+' 秒內答對 '+correct+' 題' : '答對 '+correct+' / '+cfg.total+' 題')+'・得分 '+score+'</div>'
+    + (retryOk ? '<div class="r-sub">其中 '+retryOk+' 題是看提示後自己想出來的</div>' : '')
+    + '<div>'+badges+'</div>'
+    + wrongHTML);
+  setZ($('againTxt'), '再玩一次');
+  $('resultMascot').innerHTML = mascotGroup(curOp==='mix' ? TEAM_KEYS : [curOp]);
+  show('result');
+  mood('resultMascot', stars>=2 ? 'happy' : 'cheer');
+  if(stars>=2) confetti();
+}
+
+/* =====================================================================
+   分組搶答：一台電腦就能玩
+   - 投影幕出題，兩隊各派一人站在鍵盤兩邊：左隊按 A、右隊按 L
+   - 搶到後出現四個選項，搶到的人用滑鼠點選答案
+   - 答錯（或選太久）就換另一隊作答，選項重新洗牌；兩隊都錯就公布答案
+   - 一人一題輪流上台，全隊輪 ROUNDS 次就結束（3 人 → 6 題、4 人 → 8 題）
+   ===================================================================== */
+const TEAM_COLORS = ['#ff5a4f','#3b7be0'];
+const BUZZ_KEYS   = ['KeyA','KeyL'];
+const ROUNDS      = 2;     // 全隊輪幾次（每人至少答幾題）
+const ANSWER_TIME = 10;    // 搶到後（或換對方作答時）選答案的秒數
+let bk = 0, bq = null, phase = 'idle', answerer = -1, tried = [], bDeadline = 0, bChoices = [];
+
+function teamSize(){ return Math.max(1, Math.min(30, store.teamSize || 3)); }
+function buzzTotal(){ return teamSize() * ROUNDS; }
+function bt(i){ return $('bt'+i); }
+function teamSpan(i){ return '<span style="color:'+teams[i].c+'">'+nz(teams[i].name)+'</span>'; }
+
+function startBuzz(){
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  teams = [0,1].map(function(i){ return { name:(store.teamNames[i]||'').trim(), c:TEAM_COLORS[i], score:0, wrong:0 }; });
+  bk = 0; phase = 'idle';
+  document.body.classList.add('wide-on');
+  $('buzzTag').innerHTML = Z(OPS[curOp].name + '・' + cfg.name);
+  $('buzzTag').style.background = OPS[curOp].c;
+  [0,1].forEach(function(i){
+    bt(i).querySelector('.b-name').textContent = teams[i].name;
+    bt(i).querySelector('.b-score b').textContent = 0;
+  });
+  show('buzz');
+  nextBuzz();
+}
+
+function nextBuzz(){
+  clearTimers();
+  if(bk >= buzzTotal()){ finishBuzz(); return; }
+  bq = makeQuestion(); tried = []; answerer = -1; bChoices = []; phase = 'ready';
+  const who = (bk % teamSize()) + 1, round = Math.floor(bk / teamSize()) + 1;
+  $('bRound').innerHTML = Z('第 '+(bk+1)+' / '+buzzTotal()+' 題');
+  $('bBar').style.width = (bk/buzzTotal()*100) + '%';
+  [0,1].forEach(function(i){
+    bt(i).className = 'b-team';
+    bt(i).querySelector('.b-who').innerHTML = Z('第 '+who+' 位上台');
+  });
+  $('bStatus').className = 'b-status';
+  $('bStatus').innerHTML = Z((who===1 && round>1 ? '第 '+round+' 輪！' : '換人！') + '兩隊第 '+who+' 位請上台');
+  $('bQ').innerHTML = '<span class="b-wait">？</span>';
+  $('bTimer').textContent = '';
+  $('bChoices').hidden = true; $('bChoices').innerHTML = ''; $('bChoices').className = 'b-choices';
+  $('bNext').hidden = true;
+  sTurn();
+  later(openBuzz, 2500);
+}
+
+function openBuzz(){
+  phase = 'open';
+  bDeadline = Date.now() + cfg.buzzTime*1000;
+  $('bQ').innerHTML = qHTML(bq, '');
+  $('bStatus').className = 'b-status go';
+  $('bStatus').innerHTML = Z('搶答！');
+  [0,1].forEach(function(i){ bt(i).classList.add('pulse'); });
+  beep([880], 0.12);
+  tick = setInterval(buzzTick, 200);
+  buzzTick();
+}
+
+function buzzTick(){
+  if(phase!=='open' && phase!=='answer') return;
+  const left = Math.max(0, Math.ceil((bDeadline - Date.now())/1000));
+  $('bTimer').innerHTML = ico('clock') + Z(' ' + left + ' 秒');
+  $('bTimer').classList.toggle('warn', left <= 3);
+  if(left > 0) return;
+  if(phase==='open'){ sBad(); revealBuzz('時間到！沒有人搶答，答案是 ' + bq.answer, false); }
+  else wrongPick(-1);   // 選太久，算答錯
+}
+
+/* 搶到了 → 出現選項讓搶到的人自己選 */
+function buzz(i){
+  if(phase!=='open') return;
+  [0,1].forEach(function(k){ bt(k).classList.remove('pulse'); });
+  beep([523,784,1047], 0.08, 'square');
+  askAnswer(i, teamSpan(i) + ' 搶到了！選出答案');
+}
+
+/* 讓第 i 隊選答案；換對方作答時，同一組選項會重新洗牌 */
+function askAnswer(i, msg){
+  clearInterval(tick);
+  phase = 'answer'; answerer = i;
+  bt(i).classList.add('buzzed'); bt(1-i).classList.remove('buzzed');
+  if(!bChoices.length){
+    bChoices = makeChoices(bq);
+  }else{
+    const before = bChoices.join(',');
+    let tries = 0;
+    do{ bChoices = shuffle(bChoices.slice()); }while(bChoices.join(',')===before && ++tries < 10);
+  }
+  const box = $('bChoices');
+  box.className = 'b-choices';
+  box.innerHTML = bChoices.map(function(v,k){
+    return '<button class="choice" data-v="'+v+'">'+v+'</button>';
+  }).join('');
+  Array.from(box.children).forEach(function(b,k){ b.onclick = function(){ pickAnswer(k); }; });
+  box.hidden = false;
+  $('bStatus').className = 'b-status';
+  $('bStatus').innerHTML = Z(msg);
+  bDeadline = Date.now() + ANSWER_TIME*1000;
+  tick = setInterval(buzzTick, 200);
+  buzzTick();
+}
+
+function pickAnswer(k){
+  if(phase!=='answer') return;
+  const i = answerer, btn = $('bChoices').children[k];
+  clearInterval(tick);
+  if(bChoices[k] === bq.answer){
+    btn.classList.add('right');
+    teams[i].score++;
+    bt(i).querySelector('.b-score b').textContent = teams[i].score;
+    sGood(); burst(bt(i));
+    revealBuzz(teamSpan(i) + ' 答對了！+1', true);
+  }else{
+    btn.classList.add('wrong');
+    wrongPick(k);
+  }
+}
+
+/* 答錯或選太久（k = -1）：換另一隊作答；兩隊都錯就公布答案 */
+function wrongPick(k){
+  const i = answerer, j = 1 - i, why = k < 0 ? '時間到！' : '差一點點！';
+  phase = 'wait';
+  clearInterval(tick);
+  teams[i].wrong++; tried.push(i); sBad();
+  $('bChoices').classList.add('done');
+  bt(i).classList.remove('buzzed'); bt(i).classList.add('out');
+  $('bStatus').className = 'b-status bad';
+  $('bStatus').innerHTML = Z(why);
+  $('bTimer').textContent = '';
+  if(tried.indexOf(j) < 0){
+    later(function(){ askAnswer(j, why + '換 ' + teamSpan(j) + ' 作答'); }, 1100);
+  }else{
+    later(function(){ revealBuzz('沒關係，下一題加油！答案是 ' + bq.answer, false); }, 1100);
+  }
+}
+
+function revealBuzz(msg, good){
+  clearInterval(tick);
+  phase = 'reveal';
+  $('bQ').innerHTML = qHTML(bq, String(bq.answer));
+  $('bStatus').className = 'b-status ' + (good ? 'good' : 'bad');
+  $('bStatus').innerHTML = Z(msg);
+  $('bTimer').textContent = '';
+  const box = $('bChoices');
+  box.classList.add('done');
+  Array.from(box.children).forEach(function(c){
+    c.classList.remove('wrong');
+    if(+c.dataset.v === bq.answer) c.classList.add('right');
+  });
+  [0,1].forEach(function(i){ bt(i).classList.remove('pulse'); });
+  bk++;
+  $('bBar').style.width = (bk/buzzTotal()*100) + '%';
+  $('bNext').innerHTML = Z(bk >= buzzTotal() ? '看結果 ' : '下一題 ') + ico('next');
+  $('bNext').hidden = false;
+}
+function buzzNext(){ if(phase==='reveal') nextBuzz(); }
+
+function finishBuzz(){
+  phase = 'idle';
+  clearTimers();
+  document.body.classList.remove('wide-on');
+  sEnd();
+  const sorted = teams.slice().sort(function(a,b){ return b.score - a.score; });
+  const top = sorted[0].score;
+  const winners = sorted.filter(function(t){ return t.score===top; });
+  const MEDAL = ['#ffb800','#a9b4c2'];
+  let rank = 0, prev = null;
+  const rows = sorted.map(function(t,i){
+    if(t.score !== prev){ rank = i; prev = t.score; }
+    return '<div class="rrow '+(rank===0?'first':'')+'">'
+      + '<span class="medal" style="background:'+MEDAL[rank]+'">'+(rank+1)+'</span>'
+      + '<span class="tdot" style="background:'+t.c+'"></span>'
+      + '<span class="rn" style="color:'+t.c+'">'+nz(t.name)+'<small>答對 '+t.score+' 題・答錯 '+t.wrong+' 題</small></span>'
+      + '<span class="rs">'+ico('star')+t.score+'</span></div>';
+  }).join('');
+  const title = top===0 ? '再接再厲！'
+    : winners.length > 1 ? '平手！'
+    : nz(winners[0].name) + ' 獲勝！';
+  $('rBody').innerHTML = Z(
+      '<div class="r-title" style="font-size:'+(title.length>9?'24px':'32px')+'">'+title+'</div>'
+    + '<div class="r-sub">分組搶答・'+OPS[curOp].name+'・'+cfg.name+'・每隊 '+teamSize()+' 人・共 '+buzzTotal()+' 題</div>'
+    + '<div class="rank-list">'+rows+'</div>');
+  setZ($('againTxt'), '再比一次');
+  $('resultMascot').innerHTML = '<svg class="trophy-big"><use href="#i-trophy" xlink:href="#i-trophy"/></svg>';
+  mood('resultMascot', null);
+  show('result');
+  if(top > 0) confetti();
+}
+
+[0,1].forEach(function(i){ bt(i).onclick = function(){ buzz(i); }; });   // 也可以用滑鼠點隊伍搶答
+$('bNext').onclick = buzzNext;
+
+/* ===== 按鈕與鍵盤 ===== */
+document.querySelectorAll('.level-btn').forEach(function(b){ b.onclick = function(){ start(b.dataset.level); }; });
+$('lvBackBtn').onclick   = function(){ renderHome(); show('home'); };
+$('gameBackBtn').onclick = function(){ clearTimers(); refreshLevels(); show('levels'); };
+$('buzzBackBtn').onclick = function(){ clearTimers(); phase = 'idle'; document.body.classList.remove('wide-on'); refreshLevels(); show('levels'); };
+$('againBtn').onclick    = function(){ start(level); };
+$('toLevelsBtn').onclick = function(){ refreshLevels(); show('levels'); };
+$('toHomeBtn').onclick   = function(){ renderHome(); show('home'); };
+document.querySelectorAll('.soundBtn').forEach(function(b){ b.onclick = function(){ soundOn = !soundOn; renderSoundBtns(); }; });
+document.querySelectorAll('.zyBtn').forEach(function(b){ b.onclick = function(){ store.zhuyin = !store.zhuyin; saveStore(); refreshZy(); }; });
+
+function pressKey(k){
+  if(locked || cfg.mode!=='input') return;
+  if(k==='del') input = input.slice(0,-1);
+  else if(k==='ok'){ if(input!=='') submit(parseInt(input,10)); return; }
+  else if(input.length < 3) input += k;
+  renderQuestion();
+}
+document.querySelectorAll('#pad .key').forEach(function(b){ b.onclick = function(){ pressKey(b.dataset.k); }; });
+
+document.addEventListener('keydown', function(e){
+  /* 分組搶答：A／L 搶答 → 滑鼠點選答案 → 空白鍵或 Enter 下一題 */
+  if($('buzz').classList.contains('active')){
+    if(e.repeat) return;
+    const bi = BUZZ_KEYS.indexOf(e.code);
+    if(bi >= 0){ e.preventDefault(); buzz(bi); return; }
+    if((e.key==='Enter' || e.key===' ') && phase==='reveal'){ e.preventDefault(); buzzNext(); }
+    return;
+  }
+  if(!$('game').classList.contains('active')) return;
+  if(cfg.mode==='input'){
+    if(/^[0-9]$/.test(e.key)) pressKey(e.key);
+    else if(e.key==='Backspace') pressKey('del');
+    else if(e.key==='Enter') pressKey('ok');
+  }else if(/^[1-4]$/.test(e.key)){
+    const b = $('choices').children[+e.key-1]; if(b) b.click();
+  }
+});
+
+refreshZy();
+</script>
+</body>
+</html>
