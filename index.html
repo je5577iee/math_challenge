@@ -421,6 +421,23 @@ body.zy-on .b-status{line-height:1.8}
 body.zy-on .rank-row{line-height:1.9}
 .zy-ico{font-weight:900; color:var(--orange); font-size:1.1em}
 .foot .pill + .pill{margin-left:8px}
+/* 遊戲中也能切換音效、注音 */
+.foot.tg{padding-top:14px}
+.foot.tg .pill{font-size:14px; padding:7px 13px}
+/* 意見回饋 */
+.fb-link{display:flex; align-items:center; gap:6px; margin:14px auto 0; background:none; border:none; color:var(--muted); font-weight:800; font-size:15px; padding:4px 8px}
+.fb-link .ico{font-size:22px}
+.fb-link:hover{color:var(--orange)}
+.fb-txt{font-weight:700; line-height:1.7; margin:0 0 8px}
+.fb-txt.warn{color:var(--red-d)}
+.fb-txt.small{font-size:14px; color:var(--muted)}
+.fb-btns{display:flex; gap:10px; margin-top:14px}
+.fb-btns .pill{flex:1; justify-content:center; text-decoration:none; color:var(--ink)}
+.fb-btns .pill.go{background:var(--orange); color:#fff; box-shadow:0 4px 0 #d95f1a}
+body.zy-on .fb-txt{line-height:2.2}
+body.zy-on .fb-btns{flex-direction:column}
+.topbar > .pill{white-space:nowrap; flex-shrink:0}
+.topbar .tag{min-width:0}
 
 .conf{position:fixed; top:-20px; z-index:60; pointer-events:none; border-radius:3px; animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
@@ -532,7 +549,8 @@ body.zy-on .rank-row{line-height:1.9}
 
     <div class="label" data-zy="">選擇題型</div>
     <div class="op-grid" id="opGrid"></div>
-    <div class="foot"><button class="pill soundBtn"></button><button class="pill zyBtn"></button></div>
+    <div class="foot"><button class="pill soundBtn"></button><button class="pill zyBtn"></button>
+      <button class="fb-link" id="fbBtn" aria-label="意見回饋"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" fill="#fff" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 13h5" stroke="#ff7a2f" stroke-width="1.8" stroke-linecap="round"/></svg><span data-zy="">意見回饋</span></button></div>
   </section>
 
   <!-- 選難度 -->
@@ -591,6 +609,7 @@ body.zy-on .rank-row{line-height:1.9}
       <button class="key" data-k="0">0</button>
       <button class="key ok" data-k="ok" aria-label="確定"><svg class="ico"><use href="#i-check" xlink:href="#i-check"/></svg></button>
     </div>
+    <div class="foot tg"><button class="pill soundBtn"></button><button class="pill zyBtn"></button></div>
   </section>
 
   <!-- 分組搶答 -->
@@ -612,6 +631,7 @@ body.zy-on .rank-row{line-height:1.9}
       </div>
       <div class="b-team" id="bt1" style="--tc:#3b7be0"><div class="b-key">L</div><div class="b-name"></div><div class="b-score"><svg class="ico"><use href="#i-star" xlink:href="#i-star"/></svg><b>0</b></div><div class="b-who"></div></div>
     </div>
+    <div class="foot tg"><button class="pill soundBtn"></button><button class="pill zyBtn"></button></div>
   </section>
 
   <!-- 結果 -->
@@ -625,7 +645,20 @@ body.zy-on .rank-row{line-height:1.9}
       </div>
       <button id="toHomeBtn" class="pill to-home"><svg class="ico"><use href="#i-home" xlink:href="#i-home"/></svg><span data-zy="">回首頁</span></button>
     </div>
+    <div class="foot tg"><button class="pill soundBtn"></button><button class="pill zyBtn"></button></div>
   </section>
+
+  <!-- 意見回饋 -->
+  <div class="overlay" id="fbModal">
+    <div class="sheet">
+      <h2 data-zy="">有什麼想法嗎？告訴我們！</h2>
+      <p class="fb-txt" data-zy="">好玩的地方、看不懂的地方、哪裡怪怪的，都可以寫下來。</p>
+      <p class="fb-txt warn" data-zy="">請不要寫下名字、學校、電話這些個人資料喔！</p>
+      <p class="fb-txt small" data-zy="">按下去會打開一個新的網頁表單，需要網路。</p>
+      <div class="fb-btns"><button class="pill soft" id="fbClose" data-zy="">先不用了</button><a class="pill go" id="fbGo" target="_blank" rel="noopener noreferrer" data-zy="">好，我要填寫</a></div>
+      <p class="fb-txt small" id="fbNone" hidden data-zy="">（回饋表單還沒設定好）</p>
+    </div>
+  </div>
 
 </div>
 
@@ -852,8 +885,8 @@ function starsHTML(n){ return [0,1,2].map(function(i){ return ico('star', i<n ? 
    ZY：每個字的注音（臺灣國語課本讀音）
    ZY_WORDS：破音字、輕聲依詞語另外標，例如「朋友」「起來」「位數」
    ===================================================================== */
-const ZY = {"一": "ㄧ", "上": "ㄕㄤˋ", "下": "ㄒㄧㄚˋ", "不": "ㄅㄨˋ", "中": "ㄓㄨㄥ", "乘": "ㄔㄥˊ", "九": "ㄐㄧㄡˇ", "了": "˙ㄌㄜ", "人": "ㄖㄣˊ", "他": "ㄊㄚ", "以": "ㄧˇ", "位": "ㄨㄟˋ", "作": "ㄗㄨㄛˋ", "你": "ㄋㄧˇ", "佳": "ㄐㄧㄚ", "來": "ㄌㄞˊ", "係": "ㄒㄧˋ", "個": "ㄍㄜˋ", "傳": "ㄔㄨㄢˊ", "先": "ㄒㄧㄢ", "入": "ㄖㄨˋ", "內": "ㄋㄟˋ", "全": "ㄑㄩㄢˊ", "兩": "ㄌㄧㄤˇ", "共": "ㄍㄨㄥˋ", "其": "ㄑㄧˊ", "再": "ㄗㄞˋ", "冒": "ㄇㄠˋ", "出": "ㄔㄨ", "分": "ㄈㄣ", "刪": "ㄕㄢ", "到": "ㄉㄠˋ", "剩": "ㄕㄥˋ", "加": "ㄐㄧㄚ", "勝": "ㄕㄥˋ", "十": "ㄕˊ", "升": "ㄕㄥ", "博": "ㄅㄛˊ", "厲": "ㄌㄧˋ", "去": "ㄑㄩˋ", "叉": "ㄔㄚ", "友": "ㄧㄡˇ", "取": "ㄑㄩˇ", "可": "ㄎㄜˇ", "台": "ㄊㄞˊ", "右": "ㄧㄡˋ", "各": "ㄍㄜˋ", "合": "ㄏㄜˊ", "名": "ㄇㄧㄥˊ", "呢": "˙ㄋㄜ", "和": "ㄏㄢˋ", "啦": "˙ㄌㄚ", "喔": "ㄛ", "單": "ㄉㄢ", "嗎": "˙ㄇㄚ", "四": "ㄙˋ", "回": "ㄏㄨㄟˊ", "困": "ㄎㄨㄣˋ", "在": "ㄗㄞˋ", "型": "ㄒㄧㄥˊ", "填": "ㄊㄧㄢˊ", "增": "ㄗㄥ", "士": "ㄕˋ", "多": "ㄉㄨㄛ", "大": "ㄉㄚˋ", "太": "ㄊㄞˋ", "好": "ㄏㄠˇ", "始": "ㄕˇ", "學": "ㄒㄩㄝˊ", "完": "ㄨㄢˊ", "定": "ㄉㄧㄥˋ", "客": "ㄎㄜˋ", "害": "ㄏㄞˋ", "家": "ㄐㄧㄚ", "寫": "ㄒㄧㄝˇ", "對": "ㄉㄨㄟˋ", "小": "ㄒㄧㄠˇ", "就": "ㄐㄧㄡˋ", "左": "ㄗㄨㄛˇ", "差": "ㄔㄚ", "己": "ㄐㄧˇ", "師": "ㄕ", "幫": "ㄅㄤ", "平": "ㄆㄧㄥˊ", "幾": "ㄐㄧˇ", "度": "ㄉㄨˋ", "座": "ㄗㄨㄛˋ", "強": "ㄑㄧㄤˊ", "很": "ㄏㄣˇ", "後": "ㄏㄡˋ", "徒": "ㄊㄨˊ", "得": "ㄉㄜˊ", "從": "ㄘㄨㄥˊ", "想": "ㄒㄧㄤˇ", "成": "ㄔㄥˊ", "或": "ㄏㄨㄛˋ", "戰": "ㄓㄢˋ", "手": "ㄕㄡˇ", "才": "ㄘㄞˊ", "打": "ㄉㄚˇ", "把": "ㄅㄚˇ", "拆": "ㄔㄞ", "拿": "ㄋㄚˊ", "按": "ㄢˋ", "挑": "ㄊㄧㄠˇ", "接": "ㄐㄧㄝ", "提": "ㄊㄧˊ", "換": "ㄏㄨㄢˋ", "搶": "ㄑㄧㄤˇ", "擇": "ㄗㄜˊ", "效": "ㄒㄧㄠˋ", "數": "ㄕㄨˇ", "新": "ㄒㄧㄣ", "明": "ㄇㄧㄥˊ", "星": "ㄒㄧㄥ", "是": "ㄕˋ", "時": "ㄕˊ", "最": "ㄗㄨㄟˋ", "有": "ㄧㄡˇ", "朋": "ㄆㄥˊ", "束": "ㄕㄨˋ", "果": "ㄍㄨㄛˇ", "案": "ㄢˋ", "棒": "ㄅㄤˋ", "次": "ㄘˋ", "正": "ㄓㄥˋ", "步": "ㄅㄨˋ", "每": "ㄇㄟˇ", "比": "ㄅㄧˇ", "沒": "ㄇㄟˊ", "油": "ㄧㄡˊ", "法": "ㄈㄚˇ", "派": "ㄆㄞˋ", "流": "ㄌㄧㄡˊ", "消": "ㄒㄧㄠ", "混": "ㄏㄨㄣˋ", "減": "ㄐㄧㄢˇ", "湊": "ㄘㄡˋ", "獲": "ㄏㄨㄛˋ", "玩": "ㄨㄢˊ", "的": "˙ㄉㄜ", "盤": "ㄆㄢˊ", "看": "ㄎㄢˋ", "真": "ㄓㄣ", "確": "ㄑㄩㄝˋ", "示": "ㄕˋ", "神": "ㄕㄣˊ", "秒": "ㄇㄧㄠˇ", "種": "ㄓㄨㄥˇ", "稱": "ㄔㄥ", "積": "ㄐㄧ", "空": "ㄎㄨㄥ", "站": "ㄓㄢˋ", "第": "ㄉㄧˋ", "答": "ㄉㄚˊ", "算": "ㄙㄨㄢˋ", "簡": "ㄐㄧㄢˇ", "糖": "ㄊㄤˊ", "紀": "ㄐㄧˋ", "級": "ㄐㄧˊ", "累": "ㄌㄟˇ", "組": "ㄗㄨˇ", "結": "ㄐㄧㄝˊ", "給": "ㄍㄟˇ", "綜": "ㄗㄨㄥˋ", "綽": "ㄔㄨㄛˋ", "練": "ㄌㄧㄢˋ", "習": "ㄒㄧˊ", "聰": "ㄘㄨㄥ", "能": "ㄋㄥˊ", "自": "ㄗˋ", "號": "ㄏㄠˋ", "行": "ㄒㄧㄥˊ", "術": "ㄕㄨˋ", "計": "ㄐㄧˋ", "訪": "ㄈㄤˇ", "試": "ㄕˋ", "說": "ㄕㄨㄛ", "請": "ㄑㄧㄥˇ", "賽": "ㄙㄞˋ", "贏": "ㄧㄥˊ", "走": "ㄗㄡˇ", "起": "ㄑㄧˇ", "輪": "ㄌㄨㄣˊ", "輸": "ㄕㄨ", "返": "ㄈㄢˇ", "這": "ㄓㄜˋ", "連": "ㄌㄧㄢˊ", "進": "ㄐㄧㄣˋ", "達": "ㄉㄚˊ", "選": "ㄒㄩㄢˇ", "還": "ㄏㄞˊ", "邊": "ㄅㄧㄢ", "部": "ㄅㄨˋ", "錄": "ㄌㄨˋ", "錯": "ㄘㄨㄛˋ", "鍵": "ㄐㄧㄢˋ", "開": "ㄎㄞ", "間": "ㄐㄧㄢ", "關": "ㄍㄨㄢ", "限": "ㄒㄧㄢˋ", "除": "ㄔㄨˊ", "隊": "ㄉㄨㄟˋ", "階": "ㄐㄧㄝ", "險": "ㄒㄧㄢˇ", "難": "ㄋㄢˊ", "音": "ㄧㄣ", "頁": "ㄧㄝˋ", "項": "ㄒㄧㄤˋ", "顆": "ㄎㄜ", "題": "ㄊㄧˊ", "首": "ㄕㄡˇ", "高": "ㄍㄠ", "點": "ㄉㄧㄢˇ", "注": "ㄓㄨˋ"};
-const ZY_WORDS = {"朋友": ["ㄆㄥˊ", "˙ㄧㄡ"], "起來": ["ㄑㄧˇ", "˙ㄌㄞ"], "出來": ["ㄔㄨ", "˙ㄌㄞ"], "關係": ["ㄍㄨㄢ", "ㄒㄧˋ"], "位數": ["ㄨㄟˋ", "ㄕㄨˋ"], "數學": ["ㄕㄨˋ", "ㄒㄩㄝˊ"], "填空": ["ㄊㄧㄢˊ", "ㄎㄨㄥˋ"]};
+const ZY = {"一": "ㄧ", "上": "ㄕㄤˋ", "下": "ㄒㄧㄚˋ", "不": "ㄅㄨˋ", "中": "ㄓㄨㄥ", "乘": "ㄔㄥˊ", "九": "ㄐㄧㄡˇ", "了": "˙ㄌㄜ", "人": "ㄖㄣˊ", "他": "ㄊㄚ", "以": "ㄧˇ", "位": "ㄨㄟˋ", "作": "ㄗㄨㄛˋ", "你": "ㄋㄧˇ", "佳": "ㄐㄧㄚ", "來": "ㄌㄞˊ", "係": "ㄒㄧˋ", "個": "ㄍㄜˋ", "傳": "ㄔㄨㄢˊ", "先": "ㄒㄧㄢ", "入": "ㄖㄨˋ", "內": "ㄋㄟˋ", "全": "ㄑㄩㄢˊ", "兩": "ㄌㄧㄤˇ", "共": "ㄍㄨㄥˋ", "其": "ㄑㄧˊ", "再": "ㄗㄞˋ", "冒": "ㄇㄠˋ", "出": "ㄔㄨ", "分": "ㄈㄣ", "刪": "ㄕㄢ", "到": "ㄉㄠˋ", "剩": "ㄕㄥˋ", "加": "ㄐㄧㄚ", "勝": "ㄕㄥˋ", "十": "ㄕˊ", "升": "ㄕㄥ", "博": "ㄅㄛˊ", "厲": "ㄌㄧˋ", "去": "ㄑㄩˋ", "叉": "ㄔㄚ", "友": "ㄧㄡˇ", "取": "ㄑㄩˇ", "可": "ㄎㄜˇ", "台": "ㄊㄞˊ", "右": "ㄧㄡˋ", "各": "ㄍㄜˋ", "合": "ㄏㄜˊ", "名": "ㄇㄧㄥˊ", "呢": "˙ㄋㄜ", "和": "ㄏㄢˋ", "啦": "˙ㄌㄚ", "喔": "ㄛ", "單": "ㄉㄢ", "嗎": "˙ㄇㄚ", "四": "ㄙˋ", "回": "ㄏㄨㄟˊ", "困": "ㄎㄨㄣˋ", "在": "ㄗㄞˋ", "型": "ㄒㄧㄥˊ", "填": "ㄊㄧㄢˊ", "增": "ㄗㄥ", "士": "ㄕˋ", "多": "ㄉㄨㄛ", "大": "ㄉㄚˋ", "太": "ㄊㄞˋ", "好": "ㄏㄠˇ", "始": "ㄕˇ", "學": "ㄒㄩㄝˊ", "完": "ㄨㄢˊ", "定": "ㄉㄧㄥˋ", "客": "ㄎㄜˋ", "害": "ㄏㄞˋ", "家": "ㄐㄧㄚ", "寫": "ㄒㄧㄝˇ", "對": "ㄉㄨㄟˋ", "小": "ㄒㄧㄠˇ", "就": "ㄐㄧㄡˋ", "左": "ㄗㄨㄛˇ", "差": "ㄔㄚ", "己": "ㄐㄧˇ", "師": "ㄕ", "幫": "ㄅㄤ", "平": "ㄆㄧㄥˊ", "幾": "ㄐㄧˇ", "度": "ㄉㄨˋ", "座": "ㄗㄨㄛˋ", "強": "ㄑㄧㄤˊ", "很": "ㄏㄣˇ", "後": "ㄏㄡˋ", "徒": "ㄊㄨˊ", "得": "ㄉㄜˊ", "從": "ㄘㄨㄥˊ", "想": "ㄒㄧㄤˇ", "成": "ㄔㄥˊ", "或": "ㄏㄨㄛˋ", "戰": "ㄓㄢˋ", "手": "ㄕㄡˇ", "才": "ㄘㄞˊ", "打": "ㄉㄚˇ", "把": "ㄅㄚˇ", "拆": "ㄔㄞ", "拿": "ㄋㄚˊ", "按": "ㄢˋ", "挑": "ㄊㄧㄠˇ", "接": "ㄐㄧㄝ", "提": "ㄊㄧˊ", "換": "ㄏㄨㄢˋ", "搶": "ㄑㄧㄤˇ", "擇": "ㄗㄜˊ", "效": "ㄒㄧㄠˋ", "數": "ㄕㄨˇ", "新": "ㄒㄧㄣ", "明": "ㄇㄧㄥˊ", "星": "ㄒㄧㄥ", "是": "ㄕˋ", "時": "ㄕˊ", "最": "ㄗㄨㄟˋ", "有": "ㄧㄡˇ", "朋": "ㄆㄥˊ", "束": "ㄕㄨˋ", "果": "ㄍㄨㄛˇ", "案": "ㄢˋ", "棒": "ㄅㄤˋ", "次": "ㄘˋ", "正": "ㄓㄥˋ", "步": "ㄅㄨˋ", "每": "ㄇㄟˇ", "比": "ㄅㄧˇ", "沒": "ㄇㄟˊ", "油": "ㄧㄡˊ", "法": "ㄈㄚˇ", "派": "ㄆㄞˋ", "流": "ㄌㄧㄡˊ", "消": "ㄒㄧㄠ", "混": "ㄏㄨㄣˋ", "減": "ㄐㄧㄢˇ", "湊": "ㄘㄡˋ", "獲": "ㄏㄨㄛˋ", "玩": "ㄨㄢˊ", "的": "˙ㄉㄜ", "盤": "ㄆㄢˊ", "看": "ㄎㄢˋ", "真": "ㄓㄣ", "確": "ㄑㄩㄝˋ", "示": "ㄕˋ", "神": "ㄕㄣˊ", "秒": "ㄇㄧㄠˇ", "種": "ㄓㄨㄥˇ", "稱": "ㄔㄥ", "積": "ㄐㄧ", "空": "ㄎㄨㄥ", "站": "ㄓㄢˋ", "第": "ㄉㄧˋ", "答": "ㄉㄚˊ", "算": "ㄙㄨㄢˋ", "簡": "ㄐㄧㄢˇ", "糖": "ㄊㄤˊ", "紀": "ㄐㄧˋ", "級": "ㄐㄧˊ", "累": "ㄌㄟˇ", "組": "ㄗㄨˇ", "結": "ㄐㄧㄝˊ", "給": "ㄍㄟˇ", "綜": "ㄗㄨㄥˋ", "綽": "ㄔㄨㄛˋ", "練": "ㄌㄧㄢˋ", "習": "ㄒㄧˊ", "聰": "ㄘㄨㄥ", "能": "ㄋㄥˊ", "自": "ㄗˋ", "號": "ㄏㄠˋ", "行": "ㄒㄧㄥˊ", "術": "ㄕㄨˋ", "計": "ㄐㄧˋ", "訪": "ㄈㄤˇ", "試": "ㄕˋ", "說": "ㄕㄨㄛ", "請": "ㄑㄧㄥˇ", "賽": "ㄙㄞˋ", "贏": "ㄧㄥˊ", "走": "ㄗㄡˇ", "起": "ㄑㄧˇ", "輪": "ㄌㄨㄣˊ", "輸": "ㄕㄨ", "返": "ㄈㄢˇ", "這": "ㄓㄜˋ", "連": "ㄌㄧㄢˊ", "進": "ㄐㄧㄣˋ", "達": "ㄉㄚˊ", "選": "ㄒㄩㄢˇ", "還": "ㄏㄞˊ", "邊": "ㄅㄧㄢ", "部": "ㄅㄨˋ", "錄": "ㄌㄨˋ", "錯": "ㄘㄨㄛˋ", "鍵": "ㄐㄧㄢˋ", "開": "ㄎㄞ", "間": "ㄐㄧㄢ", "關": "ㄍㄨㄢ", "限": "ㄒㄧㄢˋ", "除": "ㄔㄨˊ", "隊": "ㄉㄨㄟˋ", "階": "ㄐㄧㄝ", "險": "ㄒㄧㄢˇ", "難": "ㄋㄢˊ", "音": "ㄧㄣ", "頁": "ㄧㄝˋ", "項": "ㄒㄧㄤˋ", "顆": "ㄎㄜ", "題": "ㄊㄧˊ", "首": "ㄕㄡˇ", "高": "ㄍㄠ", "點": "ㄉㄧㄢˇ", "注": "ㄓㄨˋ", "些": "ㄒㄧㄝ", "什": "ㄕㄜˊ", "們": "˙ㄇㄣ", "告": "ㄍㄠˋ", "哪": "ㄋㄚˇ", "地": "ㄉㄧˋ", "字": "ㄗˋ", "怪": "ㄍㄨㄞˋ", "意": "ㄧˋ", "懂": "ㄉㄨㄥˇ", "我": "ㄨㄛˇ", "料": "ㄌㄧㄠˋ", "方": "ㄈㄤ", "會": "ㄏㄨㄟˋ", "校": "ㄒㄧㄠˋ", "用": "ㄩㄥˋ", "網": "ㄨㄤˇ", "表": "ㄅㄧㄠˇ", "裡": "ㄌㄧˇ", "要": "ㄧㄠˋ", "見": "ㄐㄧㄢˋ", "設": "ㄕㄜˋ", "訴": "ㄙㄨˋ", "話": "ㄏㄨㄚˋ", "資": "ㄗ", "路": "ㄌㄨˋ", "都": "ㄉㄡ", "電": "ㄉㄧㄢˋ", "需": "ㄒㄩ", "饋": "ㄎㄨㄟˋ", "麼": "˙ㄇㄜ"};
+const ZY_WORDS = {"朋友": ["ㄆㄥˊ", "˙ㄧㄡ"], "起來": ["ㄑㄧˇ", "˙ㄌㄞ"], "出來": ["ㄔㄨ", "˙ㄌㄞ"], "關係": ["ㄍㄨㄢ", "ㄒㄧˋ"], "位數": ["ㄨㄟˋ", "ㄕㄨˋ"], "數學": ["ㄕㄨˋ", "ㄒㄩㄝˊ"], "填空": ["ㄊㄧㄢˊ", "ㄎㄨㄥˋ"], "什麼": ["ㄕㄜˊ", "˙ㄇㄜ"], "我們": ["ㄨㄛˇ", "˙ㄇㄣ"], "下來": ["ㄒㄧㄚˋ", "˙ㄌㄞ"], "名字": ["ㄇㄧㄥˊ", "˙ㄗ"], "哪裡": ["ㄋㄚˇ", "˙ㄌㄧ"]};
 function rubyOf(c, z){
   let light = false, tone = '';
   if(z.charAt(0) === '˙'){ light = true; z = z.slice(1); }
@@ -882,7 +915,7 @@ function zy(str){
   }).join('');
 }
 /* 小朋友自己取的名字不加注音（把中文字先換成編碼，注音就會略過） */
-function nz(str){ return esc(str).replace(/[\u4e00-\u9fff]/g, function(c){ return '&#'+c.charCodeAt(0)+';'; }); }
+function nz(str){ return '<span class="nozy">'+esc(str).replace(/[\u4e00-\u9fff]/g, function(c){ return '&#'+c.charCodeAt(0)+';'; })+'</span>'; }
 function Z(str){ return store.zhuyin ? zy(str) : str; }
 function setZ(el, text){ el.dataset.zy = text; el.innerHTML = Z(text); }
 function applyStaticZy(){
@@ -1548,8 +1581,50 @@ $('buzzBackBtn').onclick = function(){ clearTimers(); phase = 'idle'; document.b
 $('againBtn').onclick    = function(){ start(level); };
 $('toLevelsBtn').onclick = function(){ refreshLevels(); show('levels'); };
 $('toHomeBtn').onclick   = function(){ renderHome(); show('home'); };
-document.querySelectorAll('.soundBtn').forEach(function(b){ b.onclick = function(){ soundOn = !soundOn; renderSoundBtns(); }; });
-document.querySelectorAll('.zyBtn').forEach(function(b){ b.onclick = function(){ store.zhuyin = !store.zhuyin; saveStore(); refreshZy(); }; });
+document.querySelectorAll('.soundBtn').forEach(function(b){ b.onclick = function(){ soundOn = !soundOn; renderSoundBtns(); b.blur(); }; });
+document.querySelectorAll('.zyBtn').forEach(function(b){ b.onclick = function(){
+  store.zhuyin = !store.zhuyin; saveStore(); refreshZy();
+  /* 遊戲進行中切換：把畫面上已經出現的文字加上或拿掉注音，題目不會重來 */
+  ['game','buzz','result'].forEach(function(id){ if($(id).classList.contains('active')) convertZy($(id), store.zhuyin); });
+  b.blur();
+}; });
+
+/* 把一塊畫面裡的文字加上注音（on）或拿掉注音（off）；玩家取的名字不加注音 */
+function convertZy(root, on){
+  if(!on){
+    root.querySelectorAll('.zc').forEach(function(el){ el.replaceWith(document.createTextNode(el.firstChild ? el.firstChild.textContent : '')); });
+    root.normalize();
+    return;
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: function(n){
+      if(!/[一-鿿]/.test(n.nodeValue)) return NodeFilter.FILTER_REJECT;
+      if(n.parentNode.closest('.zc, .nozy, script, style, input, textarea')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  while(walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(function(n){
+    const tmp = document.createElement('span');
+    tmp.innerHTML = zy(esc(n.nodeValue));
+    const frag = document.createDocumentFragment();
+    while(tmp.firstChild) frag.appendChild(tmp.firstChild);
+    n.replaceWith(frag);
+  });
+}
+
+/* ===== 意見回饋 ===== */
+const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdDSZTwxzxMqZMFD64SrgDpdfw8-JeMgNx5scrCHci04fIN8Q/viewform';
+$('fbBtn').onclick = function(){
+  const ok = /^https:\/\//.test(FEEDBACK_URL);
+  $('fbGo').hidden = !ok; $('fbNone').hidden = ok;
+  if(ok) $('fbGo').href = FEEDBACK_URL;
+  $('fbModal').classList.add('open');
+};
+$('fbClose').onclick = function(){ $('fbModal').classList.remove('open'); };
+$('fbGo').addEventListener('click', function(){ setTimeout(function(){ $('fbModal').classList.remove('open'); }, 300); });
+$('fbModal').addEventListener('click', function(e){ if(e.target === $('fbModal')) $('fbModal').classList.remove('open'); });
 
 function pressKey(k){
   if(locked || cfg.mode!=='input') return;
